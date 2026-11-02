@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: #050505;
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-graphite-950 font-body text-graphite-100 antialiased;
+  }
+
+  ::selection {
+    background: rgba(225, 6, 0, 0.45);
+    color: #ffffff;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #f4f5f6;
+    -webkit-box-shadow: 0 0 0 1000px #15171b inset;
+    caret-color: #f4f5f6;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+}
+
+@layer utilities {
+  .text-metal {
+    background: linear-gradient(180deg, #ffffff 0%, #c5c9cf 55%, #737a85 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
