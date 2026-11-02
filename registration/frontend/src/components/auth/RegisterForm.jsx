@@ -114,6 +114,7 @@ export default function RegisterForm({ onSignIn, registrationType = 'online' }) 
         message={`${submitted.teamName} is registered with ${submitted.members.length} members as an ${
           submitted.registrationType === 'onsite' ? 'on-spot' : 'online'
         } entry.`}
+        whatsappUrl="https://chat.whatsapp.com/H1ZTM3wvpVdCTJLqwfOfen?s=cl&p=a&mlu=4&ilr=4&iam=2"
         actionLabel={onSignIn ? 'Back to sign in' : 'Register another team'}
         onAction={onSignIn ?? resetForm}
       />
