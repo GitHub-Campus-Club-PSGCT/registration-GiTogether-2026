@@ -17,7 +17,7 @@ export default function TextField({ label, error, icon, endAdornment, id, classN
         className={`group relative flex items-center rounded-xl border bg-graphite-900/80 transition duration-150 focus-within:bg-graphite-900 ${
           error
             ? 'border-error-500/70 shadow-[0_0_0_3px_rgba(239,68,68,0.15)]'
-            : 'border-graphite-600/80 hover:border-graphite-500 focus-within:border-brand-600 focus-within:shadow-[0_0_0_3px_rgba(225,6,0,0.18),0_0_24px_-6px_rgba(225,6,0,0.5)]'
+            : 'border-graphite-600/80 hover:border-graphite-500 focus-within:border-brand-600 focus-within:shadow-[0_0_20px_-4px_rgba(225,6,0,0.55)]'
         }`}
       >
         {icon && (
@@ -37,10 +37,6 @@ export default function TextField({ label, error, icon, endAdornment, id, classN
           {...inputProps}
         />
         {endAdornment}
-        <span
-          className="pointer-events-none absolute inset-x-4 -bottom-px h-0.5 origin-left scale-x-0 rounded-full bg-gradient-to-r from-brand-700 via-brand-500 to-brand-300 transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-focus-within:scale-x-100"
-          aria-hidden="true"
-        />
       </div>
       <AnimatePresence initial={false}>
         {error && (
