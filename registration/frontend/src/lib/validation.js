@@ -1,36 +1,35 @@
-export const MIN_TEAM_MEMBERS = 2;
-export const MAX_TEAM_MEMBERS = 3;
+import {
+  BATCH_NOT_ALLOWED,
+  MIN_TEAM_MEMBERS,
+  isAllowedBatch,
+  isValidPhone,
+  isValidRollNumber,
+  normalizeRollNumber,
+} from '@shared/teamRules.js';
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const REQUIRED_EMAIL_DOMAIN = '@psgtech.ac.in';
+export {
+  MAX_MEMBER_NAME_LENGTH,
+  MAX_TEAM_MEMBERS,
+  MAX_TEAM_NAME_LENGTH,
+  MIN_TEAM_MEMBERS,
+  ROLL_NUMBER_LENGTH,
+  emailFromRollNumber,
+  getStudentYear,
+  normalizePhone,
+  normalizeRollNumber,
+} from '@shared/teamRules.js';
 
-export function isValidEmail(email) {
-  return EMAIL_PATTERN.test(email.trim());
-}
-
-export function getPasswordChecks(password) {
-  return {
-    length: password.length >= 8,
-    letter: /[A-Za-z]/.test(password),
-    number: /\d/.test(password),
-  };
-}
-
-export function validateEmail(email) {
-  if (!email.trim()) return 'Enter your email address.';
-  if (!isValidEmail(email)) return 'Enter a valid email address.';
-  if (!email.trim().toLowerCase().endsWith(REQUIRED_EMAIL_DOMAIN)) {
-    return `Email must end with ${REQUIRED_EMAIL_DOMAIN}.`;
-  }
+export function validatePhone(phone) {
+  if (!phone.trim()) return 'Enter the phone number.';
+  if (!isValidPhone(phone)) return 'Enter a valid 10-digit phone number.';
   return undefined;
 }
 
-export function validateLogin(values) {
-  const errors = {};
-  const emailError = validateEmail(values.email);
-  if (emailError) errors.email = emailError;
-  if (!values.password) errors.password = 'Enter your password.';
-  return errors;
+export function validateRollNumber(rollNumber) {
+  if (!rollNumber.trim()) return 'Enter the roll number.';
+  if (!isValidRollNumber(rollNumber)) return 'Enter a valid roll number, like 26N000.';
+  if (!isAllowedBatch(rollNumber)) return BATCH_NOT_ALLOWED;
+  return undefined;
 }
 
 export function validateTeamRegistration({ teamName, members }) {
@@ -40,24 +39,22 @@ export function validateTeamRegistration({ teamName, members }) {
     errors.form = `A team needs at least ${MIN_TEAM_MEMBERS} members.`;
   }
 
-  const seenEmails = new Set();
+  const seenRollNumbers = new Set();
   members.forEach((member, index) => {
     const memberErrors = errors.members[index];
     if (!member.fullName.trim()) memberErrors.fullName = 'Enter the full name.';
 
-    const emailError = validateEmail(member.email);
-    const emailKey = member.email.trim().toLowerCase();
-    if (emailError) {
-      memberErrors.email = emailError;
-    } else if (seenEmails.has(emailKey)) {
-      memberErrors.email = 'Each member needs a different email address.';
-    } else {
-      seenEmails.add(emailKey);
-    }
+    const phoneError = validatePhone(member.phone);
+    if (phoneError) memberErrors.phone = phoneError;
 
-    const checks = getPasswordChecks(member.password);
-    if (!checks.length || !checks.letter || !checks.number) {
-      memberErrors.password = 'Use at least 8 characters with a letter and a number.';
+    const rollNumberError = validateRollNumber(member.rollNumber);
+    const rollNumberKey = normalizeRollNumber(member.rollNumber);
+    if (rollNumberError) {
+      memberErrors.rollNumber = rollNumberError;
+    } else if (seenRollNumbers.has(rollNumberKey)) {
+      memberErrors.rollNumber = 'Each member needs a different roll number.';
+    } else {
+      seenRollNumbers.add(rollNumberKey);
     }
   });
 

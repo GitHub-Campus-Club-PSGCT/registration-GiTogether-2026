@@ -8,13 +8,12 @@ export class ApiError extends Error {
 
 export async function apiRequest(path, { method = 'GET', body, token } = {}) {
   const headers = {};
-  const API_BASE_URL = 'https://gitogether26-backend.sreeman417.workers.dev';
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let response;
   try {
-    response = await fetch(`${API_BASE_URL}/api${path}`, {
+    response = await fetch(`/api${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),

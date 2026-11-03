@@ -1,32 +1,23 @@
-import cors from 'cors';
+import 'dotenv/config';
 import express from 'express';
-import mongoose from 'mongoose';
-import { createTeam, parseTeamPayload } from './teamRegistration.js';
+import { handleAdminLogin, handleAdminLogout, handleAdminTeams } from './admin.js';
+import { connectToDatabase } from './db.js';
+import { handleHealth, handleRegister, handleStatus } from './handlers.js';
 
 const PORT = Number(process.env.PORT) || 4001;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/gitogether26';
-const SERVER_ERROR = 'Something went wrong on our side. Please try again.';
 
 const app = express();
-app.use(cors());
 app.use(express.json());
 
-app.post('/api/register', async (req, res) => {
-  try {
-    const payload = parseTeamPayload(req.body);
-    if (payload.error) return res.status(400).json({ error: payload.error });
+app.post('/api/register', handleRegister);
+app.get('/api/register', handleRegister);
+app.get('/api/status', handleStatus);
+app.get('/api/health', handleHealth);
+app.post('/api/admin/login', handleAdminLogin);
+app.post('/api/admin/logout', handleAdminLogout);
+app.get('/api/admin/teams', handleAdminTeams);
 
-    const result = await createTeam(payload);
-    if (result.error) return res.status(409).json({ error: result.error });
-    return res.status(201).json(result);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: SERVER_ERROR });
-  }
-});
-
-mongoose
-  .connect(MONGODB_URI)
+connectToDatabase()
   .then(() => {
     app.listen(PORT, () => console.log(`Registration API listening on port ${PORT}`));
   })

@@ -9,11 +9,15 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@shared': fileURLToPath(new URL('../shared', import.meta.url)),
     },
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
-  server: { proxy: apiProxy },
+  server: {
+    proxy: apiProxy,
+    fs: { allow: [fileURLToPath(new URL('..', import.meta.url))] },
+  },
   preview: { proxy: apiProxy },
 });

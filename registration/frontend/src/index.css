@@ -25,13 +25,14 @@
     caret-color: #f4f5f6;
     transition: background-color 9999s ease-in-out 0s;
   }
-}
 
-@layer utilities {
-  .text-metal {
-    background: linear-gradient(180deg, #ffffff 0%, #c5c9cf 55%, #737a85 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+    }
   }
 }
