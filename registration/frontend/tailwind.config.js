@@ -55,7 +55,7 @@ export default {
         },
       },
       fontFamily: {
-        display: ['Orbitron', 'sans-serif'],
+        display: ['Titillium Web', 'system-ui', 'sans-serif'],
         body: ['Inter', 'system-ui', 'sans-serif'],
       },
       keyframes: {
@@ -67,10 +67,6 @@ export default {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
-        'reveal-card': {
-          '0%': { opacity: '0', transform: 'translateY(48px) scale(0.96)', filter: 'blur(12px)' },
-          '100%': { opacity: '1', transform: 'translateY(0) scale(1)', filter: 'blur(0)' },
-        },
         kenburns: {
           '0%': { transform: 'scale(1.12)' },
           '100%': { transform: 'scale(1)' },
@@ -79,13 +75,15 @@ export default {
           '0%': { transform: 'translateX(-120%)' },
           '100%': { transform: 'translateX(220%)' },
         },
-        'glow-pulse': {
-          '0%, 100%': { boxShadow: '0 0 0 1px rgba(225,6,0,0.25), 0 0 32px -8px rgba(225,6,0,0.35)' },
-          '50%': { boxShadow: '0 0 0 1px rgba(225,6,0,0.45), 0 0 56px -4px rgba(225,6,0,0.55)' },
-        },
         'line-grow': {
           '0%': { transform: 'scaleX(0)' },
           '100%': { transform: 'scaleX(1)' },
+        },
+        'icon-wave': {
+          '0%': { transform: 'scale(1) rotate(0deg)' },
+          '35%': { transform: 'scale(1.35) rotate(-14deg)' },
+          '65%': { transform: 'scale(0.94) rotate(7deg)' },
+          '100%': { transform: 'scale(1) rotate(0deg)' },
         },
         'shake': {
           '0%, 100%': { transform: 'translateX(0)' },
@@ -95,12 +93,11 @@ export default {
       },
       animation: {
         'fade-up': 'fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both',
-        'fade-in': 'fade-in 0.8s ease-out both',
-        'reveal-card': 'reveal-card 1.1s cubic-bezier(0.22, 1, 0.36, 1) both',
+        'fade-in': 'fade-in 0.3s ease-out both',
         kenburns: 'kenburns 4s cubic-bezier(0.22, 1, 0.36, 1) both',
         sweep: 'sweep 2.4s ease-in-out infinite',
-        'glow-pulse': 'glow-pulse 4s ease-in-out infinite',
         'line-grow': 'line-grow 1.2s cubic-bezier(0.22, 1, 0.36, 1) both',
+        'icon-wave': 'icon-wave 0.55s cubic-bezier(0.22, 1, 0.36, 1)',
         shake: 'shake 0.4s ease-in-out',
       },
     },
