@@ -57,3 +57,7 @@ To check that everything's connected, visit `/api/health` on your site. It shoul
 | `EMAIL_FROM` | No | The sender address. Defaults to `SMTP_USER`. |
 
 Vercel only picks up changed variables on the next deploy, so redeploy after opening or closing registration.
+
+### Keep it quick
+
+Vercel's free plan shuts functions down when they're idle. To wake the API every few minutes, add your site's address as a repository variable called `SITE_URL` (Settings → Secrets and variables → Actions → Variables). The `Keep alive` workflow then runs from `main`. GitHub can delay these runs, so the form also wakes the API when it opens.

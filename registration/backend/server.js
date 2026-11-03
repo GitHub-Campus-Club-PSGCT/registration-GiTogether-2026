@@ -10,6 +10,7 @@ const app = express();
 app.use(express.json());
 
 app.post('/api/register', handleRegister);
+app.get('/api/register', handleRegister);
 app.get('/api/status', handleStatus);
 app.get('/api/health', handleHealth);
 app.post('/api/admin/login', handleAdminLogin);

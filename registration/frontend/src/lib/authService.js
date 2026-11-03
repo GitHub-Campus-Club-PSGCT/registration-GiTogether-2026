@@ -4,6 +4,10 @@ export function registerTeam(team) {
   return apiRequest('/register', { method: 'POST', body: team });
 }
 
+export function wakeRegistrationApi() {
+  return apiRequest('/register');
+}
+
 export function getRegistrationStatus() {
   return apiRequest('/status');
 }

@@ -8,7 +8,19 @@ const SERVER_ERROR = 'Something went wrong on our side. Please try again.';
 
 const isRegistrationOpen = () => process.env.REGISTRATION_OPEN?.trim().toLowerCase() !== 'false';
 
+async function wakeUp(res) {
+  try {
+    await connectToDatabase();
+    return res.status(200).json({ status: 'ready' });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: SERVER_ERROR });
+  }
+}
+
 export async function handleRegister(req, res) {
+  // Opening the form and the keep-alive job call this, so the function and database connection are ready for sign-ups.
+  if (req.method === 'GET') return wakeUp(res);
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed.' });
   if (!isRegistrationOpen()) return res.status(403).json({ error: 'Registration is closed right now.' });
 

@@ -200,8 +200,15 @@ for (const [name, body] of Object.entries(INVALID_TEAMS)) {
   });
 }
 
-test('rejects everything except POST', async () => {
-  assert.equal((await call(handleRegister, { method: 'GET' })).status, 405);
+test('rejects other request types', async () => {
+  assert.equal((await call(handleRegister, { method: 'PUT' })).status, 405);
+});
+
+test('a GET wakes the API without saving anything', async () => {
+  const { status, body } = await call(handleRegister, { method: 'GET' });
+  assert.equal(status, 200);
+  assert.equal(body.status, 'ready');
+  assert.equal(await Team.countDocuments(), 0);
 });
 
 test('refuses sign-ups while registration is closed', async () => {
