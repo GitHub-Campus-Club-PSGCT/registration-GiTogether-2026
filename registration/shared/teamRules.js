@@ -1,4 +1,11 @@
-// Registration rules used by both the website and the API.
+// Event details and registration rules used by both the website and the API.
+export const EVENT_DATE = '2026-11-23';
+
+const formatEventDate = (options) => new Date(`${EVENT_DATE}T00:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short', ...options });
+
+export const EVENT_DATE_LABEL = formatEventDate({ year: 'numeric' });
+export const EVENT_DAY_LABEL = formatEventDate();
+
 export const MIN_TEAM_MEMBERS = 2;
 export const MAX_TEAM_MEMBERS = 3;
 export const MAX_TEAM_NAME_LENGTH = 60;

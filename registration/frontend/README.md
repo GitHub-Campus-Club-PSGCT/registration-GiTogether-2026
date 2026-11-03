@@ -28,6 +28,7 @@ src/
 | --- | --- |
 | Form fields or wording | `src/components/auth/RegisterForm.jsx` |
 | Team size, email domain, or phone and roll number rules | `../shared/teamRules.js` |
+| Event date, used by the countdown, pass, and email | `EVENT_DATE` in `../shared/teamRules.js` |
 | WhatsApp group link | `WHATSAPP_URL` in `backend/email.js` |
 | Colors and fonts | `tailwind.config.js` |
 | Animations | `src/lib/motion.js` |

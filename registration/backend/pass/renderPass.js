@@ -2,11 +2,12 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
 import satori from 'satori';
+import { EVENT_DATE_LABEL } from '../../shared/teamRules.js';
 
 const WIDTH = 800;
 const CONTENT_WIDTH = 688;
 const INK = '#0a0b0d';
-const RACE_DAY = '23 NOV 2026';
+const RACE_DAY = EVENT_DATE_LABEL.toUpperCase();
 const LONG_EMAIL_LENGTH = 34;
 const CHECK_SIZE = 22;
 const CHECK_COLUMNS = Math.ceil(WIDTH / CHECK_SIZE);

@@ -107,8 +107,9 @@ Years come from roll numbers, in `getStudentYear` in `../shared/teamRules.js`. A
 
 Each team's pass is made when its email goes out, and it isn't stored. If a pass can't be made, the leader gets a plain email with the team's details instead.
 
-- To change the date or layout, edit `pass/renderPass.js`.
-- To change the email wording, edit `email.js`. It has its own copy of the date.
+- To change the event date, edit `EVENT_DATE` in `../shared/teamRules.js`. The website's countdown, the pass and the email all use it.
+- To change the layout, edit `pass/renderPass.js`.
+- To change the email wording, edit `email.js`.
 - To change the header, labels, or the website's logo, edit `pass/renderArt.js` and run `npm run pass-art`. That needs the F1 font installed, and you can point `F1_FONT_DIR` to it. The font itself stays out of the repo, and the results are saved as shapes in `pass/art/`.
 
 The pass can show Latin and Tamil text. Anything else in a name, like emoji, is left off the pass.

@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import nodemailer from 'nodemailer';
+import { EVENT_DAY_LABEL } from '../shared/teamRules.js';
 import { Team } from './models.js';
 
 export const WHATSAPP_URL = 'https://chat.whatsapp.com/H1ZTM3wvpVdCTJLqwfOfen?s=cl&p=a&mlu=4&ilr=4&iam=2';
 
-const EVENT_DAY = '23 Nov';
 const PASS_FILENAME = 'GiTogether-2026-Paddock-Pass.png';
 const PASS_IMAGE_ID = 'paddock-pass';
 const WHATSAPP_ICON_ID = 'whatsapp-icon';
@@ -36,7 +36,7 @@ Your team's paddock pass is attached :)
 Before lights out, tune in to team radio. Join the WhatsApp group for all the updates, and bring your crew along:
 ${WHATSAPP_URL}
 
-Lights out on ${EVENT_DAY}. See you on the grid!
+Lights out on ${EVENT_DAY_LABEL}. See you on the grid!
 `,
   html: `<p>Welcome to the paddock, ${escapeHtml(leader.name)}!</p>
 <p>${escapeHtml(teamName)} is officially on the grid for GiTogether 2026, and we're so glad to have you with us.</p>
@@ -44,7 +44,7 @@ Lights out on ${EVENT_DAY}. See you on the grid!
 <p><img src="cid:${PASS_IMAGE_ID}" width="400" alt="Your GiTogether 2026 paddock pass" style="display:block;max-width:100%;height:auto"></p>
 <p>Before lights out, tune in to team radio. Join the WhatsApp group for all the updates, and bring your crew along:</p>
 <p><a href="${escapeHtml(WHATSAPP_URL)}" style="display:inline-block;padding:12px 22px;border-radius:8px;background-color:#16a34a;color:#ffffff;font-weight:600;line-height:20px;text-decoration:none"><img src="cid:${WHATSAPP_ICON_ID}" width="20" height="20" alt="" style="display:inline-block;margin-right:10px;border:0;vertical-align:middle"><span style="vertical-align:middle">Join the WhatsApp group</span></a></p>
-<p>Lights out on ${EVENT_DAY}. See you on the grid!</p>
+<p>Lights out on ${EVENT_DAY_LABEL}. See you on the grid!</p>
 `,
 });
 
@@ -61,7 +61,7 @@ Members: ${members.map(({ name }) => name).join(', ')}
 Before lights out, tune in to team radio. Join the WhatsApp group for all the updates, and bring your crew along:
 ${WHATSAPP_URL}
 
-Lights out on ${EVENT_DAY}. See you on the grid!
+Lights out on ${EVENT_DAY_LABEL}. See you on the grid!
 `,
 });
 

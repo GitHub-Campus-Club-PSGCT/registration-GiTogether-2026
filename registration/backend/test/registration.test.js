@@ -123,6 +123,7 @@ test('emails only the team leader, with the pass and the WhatsApp button', async
   assert.equal(email.to.text, '26n000@psgtech.ac.in');
   assert.equal(email.subject, 'Welcome to the paddock, Team Alpha! 🏁');
   assert.match(email.text, /chat\.whatsapp\.com/);
+  assert.match(email.text, /Lights out on 23 Nov\. See you on the grid!/);
   assert.doesNotMatch(email.text, new RegExp(body.teamCode));
   assert.match(email.html, />Join the WhatsApp group<\/span><\/a>/);
   assert.match(email.html, /Alex &#60;b&#62;/);
