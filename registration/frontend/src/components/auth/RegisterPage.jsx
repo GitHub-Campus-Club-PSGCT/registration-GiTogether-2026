@@ -23,7 +23,7 @@ export default function RegisterPage() {
       <AmbientBackground imageSrc={RACE_IMAGES.blackWhiteNight} />
       <SiteHeader />
 
-      <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-10 sm:py-14 lg:py-6">
+      <main className="relative z-10 flex flex-1 items-center justify-center px-4 pb-10 pt-1 sm:py-8 lg:py-6">
         {registrationOpen ? (
           <RegisterForm />
         ) : (
