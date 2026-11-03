@@ -16,16 +16,6 @@ jobs:
         working-directory: registration/backend
     steps:
       - uses: actions/checkout@v4
-      - name: Start MongoDB
-        run: |
-          docker run -d --name mongodb -p 27017:27017 mongo:8
-          for attempt in $(seq 1 30); do
-            if (exec 3<>/dev/tcp/127.0.0.1/27017) 2>/dev/null; then exit 0; fi
-            sleep 2
-          done
-          echo "MongoDB didn't start. Its logs:"
-          docker logs mongodb
-          exit 1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -33,8 +23,6 @@ jobs:
           cache-dependency-path: registration/backend/package-lock.json
       - run: npm ci
       - run: npm test
-        env:
-          MONGODB_URI: mongodb://127.0.0.1:27017/gitogether_test
 
   frontend:
     runs-on: ubuntu-24.04

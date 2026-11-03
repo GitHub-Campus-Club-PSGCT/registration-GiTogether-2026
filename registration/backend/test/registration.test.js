@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, test } from 'node:test';
 import { simpleParser } from 'mailparser';
+import { MongoMemoryServer } from 'mongodb-memory-server-core';
 import mongoose from 'mongoose';
 import { SMTPServer } from 'smtp-server';
 
@@ -8,10 +9,10 @@ const SMTP_PORT = 2599;
 const ADMIN_PASSWORD = 'test-admin-password';
 const EMAIL_SETTINGS = { SEND_EMAILS: 'true', SMTP_HOST: '127.0.0.1', SMTP_PORT: String(SMTP_PORT), SMTP_USER: 'club@example.com', SMTP_PASS: 'test' };
 
-// These tests delete everything they touch, so they only ever run against a database named for testing.
-process.env.MONGODB_URI ||= 'mongodb://127.0.0.1:27017/gitogether_test';
+// Every run gets its own throwaway MongoDB, so the tests can never touch real data.
+const database = await MongoMemoryServer.create();
+process.env.MONGODB_URI = database.getUri('gitogether_test');
 process.env.EMAIL_RETRY_DELAYS_MS = '20,20';
-assert.match(new URL(process.env.MONGODB_URI).pathname, /_test$/, 'MONGODB_URI must point at a database ending in _test');
 
 const { connectToDatabase } = await import('../db.js');
 const { handleAdminLogin, handleAdminLogout, handleAdminTeams } = await import('../admin.js');
@@ -89,8 +90,8 @@ beforeEach(async () => {
 
 after(async () => {
   await new Promise((resolve) => smtp.close(resolve));
-  if (mongoose.connection.readyState === 1) await mongoose.connection.dropDatabase();
   await mongoose.disconnect();
+  await database.stop();
 });
 
 test('saves the members inside the team, with emails worked out from roll numbers', async () => {

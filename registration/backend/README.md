@@ -33,7 +33,7 @@ The [root README](../../README.md#deploy-it) lists the other settings, including
 
 ## Run the tests
 
-The tests need MongoDB running on your machine. They only ever use a database called `gitogether_test`, and they never send real emails.
+The tests start their own temporary MongoDB, downloading it the first time, so they never touch real data or send real emails.
 
 ```bash
 npm test
