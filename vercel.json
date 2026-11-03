@@ -1,0 +1,12 @@
+{
+  "framework": null,
+  "regions": ["bom1"],
+  "installCommand": "npm ci --prefix registration/frontend && npm ci --prefix registration/backend",
+  "buildCommand": "npm run build --prefix registration/frontend",
+  "outputDirectory": "registration/frontend/dist",
+  "functions": {
+    "api/register.js": {
+      "includeFiles": "registration/backend/{pass/art/**,pass/fonts/**,node_modules/@resvg/resvg-wasm/index_bg.wasm}"
+    }
+  }
+}

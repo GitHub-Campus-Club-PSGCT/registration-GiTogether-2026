@@ -1,74 +1,91 @@
-import bcrypt from 'bcryptjs';
-import { Team, User } from './models.js';
+import { randomInt } from 'node:crypto';
+import {
+  MAX_MEMBER_NAME_LENGTH,
+  MAX_TEAM_MEMBERS,
+  MAX_TEAM_NAME_LENGTH,
+  MIN_TEAM_MEMBERS,
+  BATCH_NOT_ALLOWED,
+  emailFromRollNumber,
+  isAllowedBatch,
+  isValidPhone,
+  isValidRollNumber,
+  normalizePhone,
+  normalizeRollNumber,
+} from '../shared/teamRules.js';
+import { Team } from './models.js';
 
-const REQUIRED_EMAIL_DOMAIN = '@psgtech.ac.in';
-const MIN_TEAM_MEMBERS = 2;
-const MAX_TEAM_MEMBERS = 3;
-const REGISTRATION_TYPES = ['online', 'onsite'];
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DUPLICATE_KEY_ERROR = 11000;
-const DUPLICATE_EMAIL_MESSAGE = 'One of these email addresses is already registered.';
+const TEAM_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const TEAM_CODE_LENGTH = 6;
+const MAX_TEAM_CODE_ATTEMPTS = 3;
 
 const readText = (value) => (typeof value === 'string' ? value.trim() : '');
 
-const isStrongPassword = (password) => password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password);
+const createTeamCode = () => {
+  const characters = Array.from({ length: TEAM_CODE_LENGTH }, () => TEAM_CODE_ALPHABET[randomInt(TEAM_CODE_ALPHABET.length)]);
+  return `GT-${characters.join('')}`;
+};
 
 export function parseTeamPayload(body) {
   const teamName = readText(body?.teamName);
-  const registrationType = body?.registrationType;
   const members = Array.isArray(body?.members) ? body.members : [];
 
   if (!teamName) return { error: 'Enter your team name.' };
-  if (!REGISTRATION_TYPES.includes(registrationType)) return { error: 'Choose a valid registration type.' };
+  if (teamName.length > MAX_TEAM_NAME_LENGTH) return { error: `Team names can be up to ${MAX_TEAM_NAME_LENGTH} characters.` };
   if (members.length < MIN_TEAM_MEMBERS || members.length > MAX_TEAM_MEMBERS) {
     return { error: `A team needs ${MIN_TEAM_MEMBERS} to ${MAX_TEAM_MEMBERS} members.` };
   }
 
-  const seenEmails = new Set();
+  const seenRollNumbers = new Set();
   const cleanMembers = [];
   for (const member of members) {
+    const isLeader = cleanMembers.length === 0;
     const name = readText(member?.name);
-    const email = readText(member?.email).toLowerCase();
-    const password = typeof member?.password === 'string' ? member.password : '';
+    const phone = normalizePhone(readText(member?.phone));
+    const rollNumber = normalizeRollNumber(readText(member?.rollNumber));
 
     if (!name) return { error: 'Enter the full name for every member.' };
-    if (!EMAIL_PATTERN.test(email) || !email.endsWith(REQUIRED_EMAIL_DOMAIN)) {
-      return { error: `Every member needs an email ending in ${REQUIRED_EMAIL_DOMAIN}.` };
-    }
-    if (seenEmails.has(email)) return { error: 'Each member needs a different email address.' };
-    if (!isStrongPassword(password)) {
-      return { error: 'Passwords need at least 8 characters with a letter and a number.' };
-    }
+    if (name.length > MAX_MEMBER_NAME_LENGTH) return { error: `Names can be up to ${MAX_MEMBER_NAME_LENGTH} characters.` };
+    if (!isValidPhone(phone)) return { error: 'Every member needs a valid 10-digit phone number.' };
+    if (!isValidRollNumber(rollNumber)) return { error: 'Every member needs a valid roll number, like 26N000.' };
+    if (!isAllowedBatch(rollNumber)) return { error: BATCH_NOT_ALLOWED };
+    if (seenRollNumbers.has(rollNumber)) return { error: 'Each member needs a different roll number.' };
 
-    seenEmails.add(email);
-    cleanMembers.push({ name, email, password });
+    seenRollNumbers.add(rollNumber);
+    cleanMembers.push({ name, email: emailFromRollNumber(rollNumber), phone, rollNumber, isLeader });
   }
 
-  return { teamName, registrationType, members: cleanMembers };
+  return { teamName, members: cleanMembers };
 }
 
-export async function createTeam({ teamName, registrationType, members }) {
-  const alreadyRegistered = await User.exists({ email: { $in: members.map((member) => member.email) } });
-  if (alreadyRegistered) return { error: DUPLICATE_EMAIL_MESSAGE };
+async function findRegistrationConflict(members) {
+  const rollNumbers = members.map((member) => member.rollNumber);
+  const existing = await Team.findOne({ 'members.rollNumber': { $in: rollNumbers } }).lean();
+  if (!existing) return null;
 
-  const team = await Team.create({ teamName, registrationType });
-  try {
-    const users = await Promise.all(
-      members.map(async (member) => ({
-        teamId: team._id,
-        name: member.name,
-        email: member.email,
-        passwordHash: await bcrypt.hash(member.password, 10),
-        registrationType,
-      })),
-    );
-    await User.insertMany(users);
-  } catch (error) {
-    await User.deleteMany({ teamId: team._id });
-    await Team.deleteOne({ _id: team._id });
-    if (error.code === DUPLICATE_KEY_ERROR) return { error: DUPLICATE_EMAIL_MESSAGE };
-    throw error;
+  const taken = existing.members.find((member) => rollNumbers.includes(member.rollNumber));
+  return `Roll number ${taken.rollNumber} is already registered.`;
+}
+
+export async function createTeam({ teamName, members }) {
+  // Wait for the collection and unique indexes before writing.
+  await Team.init();
+
+  const conflict = await findRegistrationConflict(members);
+  if (conflict) return { error: conflict };
+
+  for (let attempt = 0; attempt < MAX_TEAM_CODE_ATTEMPTS; attempt += 1) {
+    const teamCode = createTeamCode();
+    try {
+      const team = await Team.create({ teamName, teamCode, members });
+      return { teamId: team._id.toString(), teamCode, teamName };
+    } catch (error) {
+      if (error.code !== DUPLICATE_KEY_ERROR) throw error;
+
+      // Another team took a roll number first. If not, the team code clashed, so try a new one.
+      const raceConflict = await findRegistrationConflict(members);
+      if (raceConflict) return { error: raceConflict };
+    }
   }
-
-  return { teamId: team._id.toString(), teamName };
+  throw new Error('Could not create a unique team code.');
 }
