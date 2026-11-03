@@ -83,7 +83,7 @@ If it works, you get back:
 
 Errors come back as `{ "error": "A message you can show the user" }`.
 
-`emailQueued` means the email is on its way, not that it has arrived. The API replies first and sends it in the background. Failed emails aren't retried, but the team's `emailStatus` shows which ones failed.
+`emailQueued` means the email is on its way, not that it has arrived. The API replies first and sends it in the background. A failed email is tried twice more, after 30 seconds and then 2 minutes. If those fail too, the team's `emailStatus` becomes `failed`.
 
 ### `GET /api/status`
 

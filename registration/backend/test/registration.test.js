@@ -10,6 +10,7 @@ const EMAIL_SETTINGS = { SEND_EMAILS: 'true', SMTP_HOST: '127.0.0.1', SMTP_PORT:
 
 // These tests delete everything they touch, so they only ever run against a database named for testing.
 process.env.MONGODB_URI ||= 'mongodb://127.0.0.1:27017/gitogether_test';
+process.env.EMAIL_RETRY_DELAYS_MS = '20,20';
 assert.match(new URL(process.env.MONGODB_URI).pathname, /_test$/, 'MONGODB_URI must point at a database ending in _test');
 
 const { connectToDatabase } = await import('../db.js');
@@ -19,12 +20,21 @@ const { getStudentYear } = await import('../../shared/teamRules.js');
 const { Team } = await import('../models.js');
 
 const inbox = [];
+let failNextEmails = 0;
+let emailAttempts = 0;
 const smtp = new SMTPServer({
   allowInsecureAuth: true,
   hideSTARTTLS: true,
   onAuth: (auth, session, callback) => callback(null, { user: auth.username }),
   onData: async (stream, session, callback) => {
-    inbox.push(await simpleParser(stream, { skipImageLinks: true }));
+    const parsed = await simpleParser(stream, { skipImageLinks: true });
+    emailAttempts += 1;
+    if (failNextEmails > 0) {
+      failNextEmails -= 1;
+      callback(new Error('Try again later'));
+      return;
+    }
+    inbox.push(parsed);
     callback();
   },
 });
@@ -70,6 +80,8 @@ before(async () => {
 beforeEach(async () => {
   await Team.deleteMany({});
   inbox.length = 0;
+  failNextEmails = 0;
+  emailAttempts = 0;
   Object.assign(process.env, EMAIL_SETTINGS);
   delete process.env.REGISTRATION_OPEN;
   process.env.ADMIN_PASSWORD = ADMIN_PASSWORD;
@@ -284,4 +296,27 @@ test('nobody can log in when no admin password is set', async () => {
 
 test('logging out clears the cookie', async () => {
   assert.match((await call(handleAdminLogout)).cookie, /Max-Age=0/);
+});
+
+test('retries a failed email and sends it once', async () => {
+  failNextEmails = 2;
+  const { body } = await register(teamOf(member('A', '26N000'), member('B', '26Z001')));
+  assert.equal(await waitForEmailStatus(body.teamCode), 'sent');
+  assert.equal(emailAttempts, 3);
+  assert.equal(inbox.length, 1);
+});
+
+test('stops after two retries and marks the email as failed', async () => {
+  failNextEmails = 5;
+  const { body } = await register(teamOf(member('A', '26N000'), member('B', '26Z001')));
+  assert.equal(await waitForEmailStatus(body.teamCode), 'failed');
+  assert.equal(emailAttempts, 3);
+  assert.equal(inbox.length, 0);
+});
+
+test('does not retry when emails are off', async () => {
+  process.env.SEND_EMAILS = 'false';
+  const { body } = await register(teamOf(member('A', '26N000'), member('B', '26Z001')));
+  assert.equal(await waitForEmailStatus(body.teamCode), 'failed');
+  assert.equal(emailAttempts, 0);
 });

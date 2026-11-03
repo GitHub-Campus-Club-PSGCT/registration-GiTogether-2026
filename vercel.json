@@ -8,6 +8,7 @@
   "headers": [{ "source": "/admin/:path*", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] }],
   "functions": {
     "api/register.js": {
+      "maxDuration": 300,
       "includeFiles": "registration/backend/{pass/art/**,pass/fonts/**,node_modules/@resvg/resvg-wasm/index_bg.wasm}"
     }
   }

@@ -9,6 +9,9 @@ const PASS_FILENAME = 'GiTogether-2026-Paddock-Pass.png';
 const PASS_IMAGE_ID = 'paddock-pass';
 const WHATSAPP_ICON_ID = 'whatsapp-icon';
 
+// Tries again after 30 seconds, then after 2 more minutes. Tests shorten these.
+const getRetryDelays = () => (process.env.EMAIL_RETRY_DELAYS_MS ?? '30000,120000').split(',').map(Number);
+
 export const isEmailConfigured = () =>
   process.env.SEND_EMAILS?.trim().toLowerCase() === 'true' && Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 
@@ -83,15 +86,7 @@ const renderPassSafely = async (team) => {
 };
 
 // Returns whether the email was sent.
-async function sendConfirmationEmail({ members, teamName, teamCode }) {
-  if (!isEmailConfigured()) {
-    console.warn('Emails are off, so no confirmation email was sent.');
-    return false;
-  }
-
-  const leader = members.find((member) => member.isLeader);
-  const pass = await renderPassSafely({ teamName, teamCode, members });
-  const message = pass ? buildPassMessage({ leader, teamName }) : buildPlainMessage({ leader, members, teamName });
+async function sendEmail({ leader, message, pass }) {
   const transport = createTransport();
   try {
     await transport.sendMail({
@@ -109,10 +104,28 @@ async function sendConfirmationEmail({ members, teamName, teamCode }) {
   }
 }
 
+async function sendWithRetries({ members, teamName, teamCode }) {
+  if (!isEmailConfigured()) {
+    console.warn('Emails are off, so no confirmation email was sent.');
+    return false;
+  }
+
+  const leader = members.find((member) => member.isLeader);
+  const pass = await renderPassSafely({ teamName, teamCode, members });
+  const message = pass ? buildPassMessage({ leader, teamName }) : buildPlainMessage({ leader, members, teamName });
+
+  if (await sendEmail({ leader, message, pass })) return true;
+  for (const delay of getRetryDelays()) {
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    if (await sendEmail({ leader, message, pass })) return true;
+  }
+  return false;
+}
+
 // Sends the team leader's email and records how it went. A failed email never undoes a registration.
 export async function deliverConfirmationEmail({ teamId, ...team }) {
   try {
-    const sent = await sendConfirmationEmail(team);
+    const sent = await sendWithRetries(team);
     await Team.updateOne({ _id: teamId }, { emailStatus: sent ? 'sent' : 'failed' });
   } catch (error) {
     console.error(error);
