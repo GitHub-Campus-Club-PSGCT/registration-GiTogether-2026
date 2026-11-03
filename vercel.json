@@ -4,6 +4,8 @@
   "installCommand": "npm ci --prefix registration/frontend && npm ci --prefix registration/backend",
   "buildCommand": "npm run build --prefix registration/frontend",
   "outputDirectory": "registration/frontend/dist",
+  "rewrites": [{ "source": "/admin/:path*", "destination": "/index.html" }],
+  "headers": [{ "source": "/admin/:path*", "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }] }],
   "functions": {
     "api/register.js": {
       "includeFiles": "registration/backend/{pass/art/**,pass/fonts/**,node_modules/@resvg/resvg-wasm/index_bg.wasm}"

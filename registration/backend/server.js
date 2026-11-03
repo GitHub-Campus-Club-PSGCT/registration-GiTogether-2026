@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import { handleAdminLogin, handleAdminLogout, handleAdminTeams } from './admin.js';
 import { connectToDatabase } from './db.js';
 import { handleHealth, handleRegister, handleStatus } from './handlers.js';
 
@@ -11,6 +12,9 @@ app.use(express.json());
 app.post('/api/register', handleRegister);
 app.get('/api/status', handleStatus);
 app.get('/api/health', handleHealth);
+app.post('/api/admin/login', handleAdminLogin);
+app.post('/api/admin/logout', handleAdminLogout);
+app.get('/api/admin/teams', handleAdminTeams);
 
 connectToDatabase()
   .then(() => {
