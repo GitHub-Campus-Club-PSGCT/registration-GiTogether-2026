@@ -74,4 +74,4 @@ jobs:
       
       - name: Trigger Jenkins Deploy
         run: |
-          curl -k -X POST "http://jendc.psgtech.ac.in/generic-webhook-trigger/invoke?token=gitogether2026regis"
+          curl -fsS -X POST "https://jendc.psgtech.ac.in/generic-webhook-trigger/invoke?token=gitogether2026regis"
