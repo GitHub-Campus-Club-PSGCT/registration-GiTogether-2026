@@ -35,17 +35,6 @@ npm run dev
 
 Then open http://localhost:5173.
 
-### Or run it all in Docker
-
-This needs only Docker, and comes with its own throwaway MongoDB:
-
-```bash
-cp registration/backend/.env.example registration/backend/.env
-docker compose -f compose.yaml -f compose.local.yaml up --build
-```
-
-Then open http://localhost:4001.
-
 ## Deploy it
 
 You'll need Docker on the server and a MongoDB database.
