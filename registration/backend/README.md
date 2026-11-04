@@ -11,11 +11,9 @@ The code behind the registration API. It checks each sign-up, saves it to MongoD
 | `pass/` | Makes the paddock pass image |
 | `admin.js` | Handles the dashboard's login and data |
 | `db.js` | Connects to MongoDB |
-| `server.js` | Runs the API on your machine |
+| `server.js` | Runs the API and, in Docker, serves the website |
 
 The form rules, like what counts as a valid phone or roll number, are in `../shared/teamRules.js`. The website uses the same file.
-
-On Vercel, the files in the root `api/` folder call these same handlers, so local and live behave the same way.
 
 ## Run it locally
 
@@ -27,7 +25,7 @@ cp .env.example .env
 npm run dev
 ```
 
-It runs on http://localhost:4001. Settings go in the `.env` file, which never gets committed. The example points at a local MongoDB and sends no emails. On Vercel, the same settings go in the project's environment variables.
+It runs on http://localhost:4001. Settings go in the `.env` file, which never gets committed. The example points at a local MongoDB and sends no emails. Docker reads the same file.
 
 The [root README](../../README.md#deploy-it) lists the other settings, including the ones for sending emails.
 
@@ -84,10 +82,6 @@ If it works, you get back:
 Errors come back as `{ "error": "A message you can show the user" }`.
 
 `emailQueued` means the email is on its way, not that it has arrived. The API replies first and sends it in the background. A failed email is tried twice more, after 30 seconds and then 2 minutes. If those fail too, the team's `emailStatus` becomes `failed`.
-
-### `GET /api/register`
-
-Wakes the API and returns `{ "status": "ready" }`, without saving anything. The form calls it when it opens, and so does the keep-alive job.
 
 ### `GET /api/status`
 

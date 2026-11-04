@@ -205,13 +205,6 @@ test('rejects other request types', async () => {
   assert.equal((await call(handleRegister, { method: 'PUT' })).status, 405);
 });
 
-test('a GET wakes the API without saving anything', async () => {
-  const { status, body } = await call(handleRegister, { method: 'GET' });
-  assert.equal(status, 200);
-  assert.equal(body.status, 'ready');
-  assert.equal(await Team.countDocuments(), 0);
-});
-
 test('refuses sign-ups while registration is closed', async () => {
   process.env.REGISTRATION_OPEN = 'false';
   assert.equal((await register(teamOf(member('A', '26N000'), member('B', '26Z001')))).status, 403);

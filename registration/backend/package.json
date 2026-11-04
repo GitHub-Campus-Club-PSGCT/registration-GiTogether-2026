@@ -9,14 +9,13 @@
   },
   "dependencies": {
     "@resvg/resvg-wasm": "^2.6.2",
-    "@vercel/functions": "^3.10.6",
+    "dotenv": "^18.0.9",
+    "express": "^4.22.3",
     "mongoose": "^9.0.0",
     "nodemailer": "^10.3.1",
     "satori": "^0.63.2"
   },
   "devDependencies": {
-    "dotenv": "^18.0.9",
-    "express": "^4.21.2",
     "mailparser": "^3.14.1",
     "mongodb-memory-server-core": "^11.3.0",
     "smtp-server": "^3.21.3"

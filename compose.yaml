@@ -1,0 +1,14 @@
+# The production setup. Settings come from registration/backend/.env, and the database is whatever MONGODB_URI points at.
+services:
+  app:
+    build: .
+    image: gitogether-registration
+    restart: unless-stopped
+    env_file: registration/backend/.env
+    environment:
+      PORT: 4001
+    # Only reachable from this machine. Put a reverse proxy with HTTPS in front of it.
+    ports:
+      - "127.0.0.1:${APP_PORT:-4001}:4001"
+    # Long enough for an email to finish its retries.
+    stop_grace_period: 4m

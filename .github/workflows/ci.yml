@@ -38,3 +38,14 @@ jobs:
           cache-dependency-path: registration/frontend/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  docker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp registration/backend/.env.example registration/backend/.env
+      - run: docker compose -f compose.yaml -f compose.local.yaml up --build --wait
+      - run: curl --fail --silent --show-error http://127.0.0.1:4001/api/health
+      - run: curl --fail --silent --show-error --output /dev/null http://127.0.0.1:4001/admin/dashboard
+      - if: failure()
+        run: docker compose -f compose.yaml -f compose.local.yaml logs

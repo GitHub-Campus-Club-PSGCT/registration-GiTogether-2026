@@ -5,7 +5,7 @@ import SiteHeader from '@/components/layout/SiteHeader';
 import AuthCard from '@/components/auth/AuthCard';
 import AuthHeading from '@/components/auth/AuthHeading';
 import RegisterForm from '@/components/auth/RegisterForm';
-import { getRegistrationStatus, wakeRegistrationApi } from '@/lib/authService';
+import { getRegistrationStatus } from '@/lib/authService';
 import { RACE_IMAGES } from '@/lib/images';
 
 export default function RegisterPage() {
@@ -16,8 +16,6 @@ export default function RegisterPage() {
     getRegistrationStatus()
       .then((status) => setRegistrationOpen(status.registrationOpen))
       .catch(() => {});
-    // Gets the API ready while they fill in the form.
-    wakeRegistrationApi().catch(() => {});
   }, []);
 
   return (

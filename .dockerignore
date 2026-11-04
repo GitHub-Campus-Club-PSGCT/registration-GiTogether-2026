@@ -1,0 +1,14 @@
+.git
+.github
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/*.md
+**/*.log
+**/.DS_Store
+Dockerfile
+.dockerignore
+compose*.yaml
+registration/backend/test
+registration/backend/email-preview
