@@ -12,7 +12,7 @@ export const MAX_TEAM_NAME_LENGTH = 60;
 export const MAX_MEMBER_NAME_LENGTH = 100;
 export const ROLL_NUMBER_LENGTH = 6;
 export const EMAIL_DOMAIN = '@psgtech.ac.in';
-export const OLDEST_ALLOWED_BATCH = 24;
+export const OLDEST_ALLOWED_BATCH = 25;
 export const BATCH_NOT_ALLOWED = 'This event isn\'t open to your batch.';
 
 const PHONE_PATTERN = /^[6-9]\d{9}$/;

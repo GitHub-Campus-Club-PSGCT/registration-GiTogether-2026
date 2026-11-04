@@ -179,7 +179,7 @@ export default function RegisterForm() {
               <TextField
                 label="Team name"
                 name="teamName"
-                placeholder="Make it a good one"
+                placeholder="Make it a good one ;)"
                 maxLength={MAX_TEAM_NAME_LENGTH}
                 value={values.teamName}
                 onChange={updateTeamName}

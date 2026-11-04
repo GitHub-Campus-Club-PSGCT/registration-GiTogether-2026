@@ -54,7 +54,7 @@ GitHub runs these, plus a website build, on every push to `main` and on every pu
 ```
 
 - A team has 2–3 members, and the first one is the team leader.
-- Roll numbers look like `26N000` or `26Z000`, and each one can only be registered once. Batch 23 and older can't register.
+- Roll numbers look like `26N000` or `26Z000`, and each one can only be registered once. Batch 24 and older can't register.
 - Each member's email is worked out from their roll number, like `26n000@psgtech.ac.in`, and only the team leader gets the confirmation email.
 - Phone numbers are 10-digit Indian numbers. Spaces and a `+91` at the start are fine.
 - Team names don't have to be unique. Every team gets its own team code, like `GT-7KQ2MX`.

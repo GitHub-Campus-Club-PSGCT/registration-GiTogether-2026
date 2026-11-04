@@ -166,8 +166,8 @@ test('saves only one team when several claim a roll number at once', async () =>
   await waitForEmailStatus(results.find(({ status }) => status === 201).body.teamCode);
 });
 
-test('allows batch 24 and newer', async () => {
-  const { status, body } = await register(teamOf(member('A', '24N201'), member('B', '25Z201')));
+test('allows batch 25 and newer', async () => {
+  const { status, body } = await register(teamOf(member('A', '25N201'), member('B', '26Z201')));
   assert.equal(status, 201);
   await waitForEmailStatus(body.teamCode);
 });
@@ -189,7 +189,7 @@ const INVALID_TEAMS = {
   'a bad phone number': teamOf(member('A', '26N000', '12345'), member('B', '26Z001')),
   'a bad roll number letter': teamOf(member('A', '26A000'), member('B', '26Z001')),
   'a roll number sent as a database query': teamOf(member('A', { $gt: '' }), member('B', '26Z001')),
-  'a member from batch 23': teamOf(member('A', '26N000'), member('B', '23Z201')),
+  'a member from batch 24': teamOf(member('A', '26N000'), member('B', '24Z201')),
   'a leader from batch 20': teamOf(member('A', '20N201'), member('B', '26Z001')),
   'the same roll number twice': teamOf(member('A', '26N000'), member('B', '26n000')),
 };
