@@ -6,10 +6,9 @@ This repo only covers registration. Nothing else for the event lives here.
 
 ## How it works
 
-The React site sends the form to a small API, and the API saves the team in MongoDB. Both are hosted together on Vercel, so they share one URL.
+The React site sends the form to a small API, and the API saves the team in MongoDB. Both run from one Docker image, so they share one URL.
 
 ```text
-api/                    # Vercel API routes
 registration/
 ├── frontend/           # The website
 ├── backend/            # Registration logic, database code, and emails
@@ -38,13 +37,34 @@ Then open http://localhost:5173.
 
 ## Deploy it
 
-1. Import this repo into Vercel and leave the settings as they are. `vercel.json` takes care of the build.
-2. Add the environment variables below.
-3. Deploy.
+You'll need Docker on the server and a MongoDB database.
 
-If you're using MongoDB Atlas, make sure its network access settings let Vercel connect. The API runs in Vercel's Mumbai region to stay close to the database, which you can change in `vercel.json`.
+1. Copy `registration/backend/.env.example` to `registration/backend/.env` and fill in the variables below.
+2. Run `docker compose up -d --build`.
+3. Add this to the nginx `server` block that handles HTTPS for the site. To use a different port, set `APP_PORT`.
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:4001;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    # Without this, the admin login cookie isn't marked secure.
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # The app doesn't compress anything itself.
+    gzip on;
+    gzip_proxied any;
+    gzip_types text/css application/javascript image/svg+xml;
+}
+```
+
+If nginx runs in its own container, `127.0.0.1` won't reach the app. Put both on the same Docker network and use `http://app:4001` instead.
 
 To check that everything's connected, visit `/api/health` on your site. It should say `connected`.
+
+If you're using MongoDB Atlas, add the server's IP address to its network access settings. The server also has to be allowed to make outgoing connections to `SMTP_HOST` on `SMTP_PORT`, or emails will fail.
+
+To deploy a new version, run `git pull` and then `docker compose up -d --build`. Emails still being sent get up to 4 minutes to finish first.
 
 | Variable | Needed? | What it's for |
 | --- | --- | --- |
@@ -56,8 +76,4 @@ To check that everything's connected, visit `/api/health` on your site. It shoul
 | `SMTP_PORT` | No | Defaults to `587` |
 | `EMAIL_FROM` | No | The sender address. Defaults to `SMTP_USER`. |
 
-Vercel only picks up changed variables on the next deploy, so redeploy after opening or closing registration.
-
-### Keep it quick
-
-Vercel's free plan shuts functions down when they're idle. To wake the API every few minutes, add your site's address as a repository variable called `SITE_URL` (Settings → Secrets and variables → Actions → Variables). The `Keep alive` workflow then runs from `main`. GitHub can delay these runs, so the form also wakes the API when it opens.
+The app only reads these when it starts, so run `docker compose up -d` after changing them, like when opening or closing registration.
