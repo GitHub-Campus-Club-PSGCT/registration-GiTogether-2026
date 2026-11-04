@@ -9,7 +9,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. Form submissions go to the API on your machine, so start the [backend](../backend/README.md) too.
+Open http://localhost:5173/gitogether2026/registration. Form submissions go to the API on your machine, so start the [backend](../backend/README.md) too.
 
 ## Where things are
 

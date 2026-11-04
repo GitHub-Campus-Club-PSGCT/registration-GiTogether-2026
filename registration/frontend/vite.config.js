@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
+import { BASE_PATH } from '../shared/basePath.js';
 
-const apiProxy = { '/api': 'http://localhost:4001' };
+const apiProxy = { [`${BASE_PATH}/api`]: 'http://localhost:4001' };
 
 export default defineConfig({
+  base: `${BASE_PATH}/`,
   plugins: [react()],
   resolve: {
     alias: {

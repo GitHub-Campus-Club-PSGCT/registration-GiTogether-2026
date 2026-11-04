@@ -41,6 +41,8 @@ GitHub runs these, plus a website build, on every push to `main` and on every pu
 
 ## API
 
+The whole app lives under `/gitogether2026`, set in `../shared/basePath.js`, so `/api/register` below is really `/gitogether2026/api/register`. If you change the prefix, also change the health check in the `Dockerfile` and the nginx `location`.
+
 ### `POST /api/register`
 
 ```json
@@ -93,7 +95,7 @@ Tells you whether the API can reach the database.
 
 ### Admin dashboard
 
-The page is at `/admin/dashboard`. Logging in with `ADMIN_PASSWORD` sets a cookie that lasts 30 days, and using the dashboard renews it. Changing the password logs everyone out.
+The page is at `/gitogether2026/admin`. Logging in with `ADMIN_PASSWORD` sets a cookie that lasts 30 days, and using the dashboard renews it. Changing the password logs everyone out.
 
 - `POST /api/admin/login` takes `{ "password": "..." }`.
 - `GET /api/admin/teams` returns every team, newest first.

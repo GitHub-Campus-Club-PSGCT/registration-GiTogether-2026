@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { handleAdminLogin, handleAdminLogout, handleAdminTeams } from './admin.js';
 import { connectToDatabase } from './db.js';
 import { handleHealth, handleRegister, handleStatus, waitForPendingEmails } from './handlers.js';
+import { BASE_PATH } from '../shared/basePath.js';
 
 const PORT = Number(process.env.PORT) || 4001;
 const WEBSITE = fileURLToPath(new URL('../frontend/dist/', import.meta.url));
@@ -12,17 +13,23 @@ const WEBSITE = fileURLToPath(new URL('../frontend/dist/', import.meta.url));
 const app = express();
 app.use(express.json());
 
-app.post('/api/register', handleRegister);
-app.get('/api/status', handleStatus);
-app.get('/api/health', handleHealth);
-app.post('/api/admin/login', handleAdminLogin);
-app.post('/api/admin/logout', handleAdminLogout);
-app.get('/api/admin/teams', handleAdminTeams);
+const site = express.Router();
+app.use(BASE_PATH, site);
+
+site.post('/api/register', handleRegister);
+site.get('/api/status', handleStatus);
+site.get('/api/health', handleHealth);
+site.post('/api/admin/login', handleAdminLogin);
+site.post('/api/admin/logout', handleAdminLogout);
+site.get('/api/admin/teams', handleAdminTeams);
+
+site.get('/', (req, res) => res.redirect(`${BASE_PATH}/registration`));
 
 // The built website. Locally, Vite serves it instead, so this folder may not exist.
-app.use('/assets', express.static(`${WEBSITE}assets`, { immutable: true, maxAge: '1y' }));
-app.use(express.static(WEBSITE));
-app.get(['/admin', '/admin/*'], (req, res) => {
+site.use('/assets', express.static(`${WEBSITE}assets`, { immutable: true, maxAge: '1y' }));
+site.use(express.static(WEBSITE));
+site.get('/registration', (req, res) => res.sendFile(`${WEBSITE}index.html`));
+site.get(['/admin', '/admin/*'], (req, res) => {
   res.setHeader('X-Robots-Tag', 'noindex');
   res.sendFile(`${WEBSITE}index.html`);
 });

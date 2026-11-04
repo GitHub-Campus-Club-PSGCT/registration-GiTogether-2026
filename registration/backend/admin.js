@@ -1,6 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { connectToDatabase } from './db.js';
 import { Team } from './models.js';
+import { BASE_PATH } from '../shared/basePath.js';
 
 const COOKIE_NAME = 'admin_session';
 const SESSION_SECONDS = 60 * 60 * 24 * 30;
@@ -30,7 +31,7 @@ const hasValidSession = (req) => {
 };
 
 const cookieOptions = (req, maxAge) =>
-  `Path=/api/admin; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : ''}`;
+  `Path=${BASE_PATH}/api/admin; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : ''}`;
 
 const startSession = (req, res) => {
   const expires = Date.now() + SESSION_SECONDS * 1000;

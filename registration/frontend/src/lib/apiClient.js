@@ -1,3 +1,5 @@
+import { BASE_PATH } from '@shared/basePath.js';
+
 export class ApiError extends Error {
   constructor(message, status) {
     super(message);
@@ -13,7 +15,7 @@ export async function apiRequest(path, { method = 'GET', body, token } = {}) {
 
   let response;
   try {
-    response = await fetch(`/api${path}`, {
+    response = await fetch(`${BASE_PATH}/api${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),

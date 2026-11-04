@@ -33,7 +33,7 @@ npm ci
 npm run dev
 ```
 
-Then open http://localhost:5173.
+Then open http://localhost:5173/gitogether2026/registration.
 
 ## Deploy it
 
@@ -44,7 +44,8 @@ You'll need Docker on the server and a MongoDB database.
 3. Add this to the nginx `server` block that handles HTTPS for the site. To use a different port, set `APP_PORT`.
 
 ```nginx
-location / {
+# No path after the port: the app expects to receive the /gitogether2026 prefix.
+location /gitogether2026 {
     proxy_pass http://127.0.0.1:4001;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -60,7 +61,7 @@ location / {
 
 If nginx runs in its own container, `127.0.0.1` won't reach the app. Put both on the same Docker network and use `http://app:4001` instead.
 
-To check that everything's connected, visit `/api/health` on your site. It should say `connected`.
+To check that everything's connected, visit `/gitogether2026/api/health` on your site. It should say `connected`.
 
 If you're using MongoDB Atlas, add the server's IP address to its network access settings. The server also has to be allowed to make outgoing connections to `SMTP_HOST` on `SMTP_PORT`, or emails will fail.
 
@@ -70,7 +71,7 @@ To deploy a new version, run `git pull` and then `docker compose up -d --build`.
 | --- | --- | --- |
 | `MONGODB_URI` | Yes | Your MongoDB connection string |
 | `REGISTRATION_OPEN` | No | Set to `false` to close registration. It's open by default. |
-| `ADMIN_PASSWORD` | For the dashboard | The password for `/admin/dashboard`. Use something long, since nothing limits how many guesses someone can make. |
+| `ADMIN_PASSWORD` | For the dashboard | The password for `/gitogether2026/admin`. Use something long, since nothing limits how many guesses someone can make. |
 | `SEND_EMAILS` | For emails | Set to `true` to send emails. Without it, registration still works but no emails go out. |
 | `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS` | For emails | Your email login. For a Google account, use `smtp.gmail.com`, the email address, and an app password. |
 | `SMTP_PORT` | No | Defaults to `587` |
