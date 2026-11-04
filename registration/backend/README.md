@@ -15,6 +15,49 @@ The code behind the registration API. It checks each sign-up, saves it to MongoD
 
 The form rules, like what counts as a valid phone or roll number, are in `../shared/teamRules.js`. The website uses the same file.
 
+## How it fits together
+
+One Express server handles both the website and the API.
+
+```mermaid
+flowchart LR
+    Browser --> nginx
+    nginx --> Server["server.js"]
+    Server --> Website["Built website files"]
+    Server --> Handlers["handlers.js"]
+    Server --> Admin["admin.js"]
+    Handlers --> Registration["teamRegistration.js"]
+    Handlers --> Email["email.js"]
+    Email --> Pass["pass/"]
+    Email --> SMTP["Email server"]
+    Registration --> Data["models.js and db.js"]
+    Admin --> Data
+    Handlers --> Data
+    Email --> Data
+    Data --> MongoDB[("MongoDB")]
+```
+
+When a team registers, the API replies as soon as the team is saved. The email carries on in the background, so a failed email never undoes a registration.
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant API as handlers.js
+    participant DB as MongoDB
+    participant Email as email.js
+    participant SMTP as Email server
+
+    Browser->>API: POST /api/register
+    API->>API: Check the form data
+    API->>DB: Save the team
+    DB-->>API: Saved
+    API-)Email: Start the email in the background
+    API-->>Browser: 201 with the team code
+    Email->>Email: Make the paddock pass
+    Email->>SMTP: Send to the team leader, retrying up to twice
+    Email->>DB: Set emailStatus to sent or failed
+```
+
 ## Run it locally
 
 You'll need MongoDB running on your machine, or a free Atlas database. Then start the API:
@@ -37,11 +80,22 @@ The tests start their own temporary MongoDB, downloading it the first time, so t
 npm test
 ```
 
-GitHub runs these, plus a website build, on every push to `main` and on every pull request.
+GitHub runs these, plus a website build and a Docker build, on every push to `main` and on every pull request. The same workflow also deploys the site, as the [root README](../../README.md#deploy-it) explains.
 
 ## API
 
-The whole app lives under `/gitogether2026`, set in `../shared/basePath.js`, so `/api/register` below is really `/gitogether2026/api/register`. If you change the prefix, also change the health check in the `Dockerfile` and the nginx `location`.
+The whole app lives under `/gitogether2026`, set in `../shared/basePath.js`, so `/api/register` below is really `/gitogether2026/api/register`. Don't change this prefix. The live site's nginx only sends `/gitogether2026` to this app, so any other prefix takes the site down. The prefix is also hard-coded in the `Dockerfile` health check.
+
+| Method | Path | Login needed? | What it does | Success response |
+| --- | --- | --- | --- | --- |
+| `POST` | `/api/register` | No | Registers a team | `201` with the team's details |
+| `GET` | `/api/status` | No | Says whether registration is open | `200` `{ "registrationOpen": true }` |
+| `GET` | `/api/health` | No | Says whether the API can reach the database | `200` `{ "status": "connected" }` |
+| `POST` | `/api/admin/login` | No | Logs in to the dashboard, given `{ "password": "..." }` | `200` `{ "ok": true }` |
+| `GET` | `/api/admin/teams` | Yes | Lists every team, newest first | `200` `{ "teams": [...] }` |
+| `POST` | `/api/admin/logout` | No | Ends the session | `200` `{ "ok": true }` |
+
+If the database is down, `/api/health` returns `500` with `{ "status": "database connection failed" }`.
 
 ### `POST /api/register`
 
@@ -55,11 +109,13 @@ The whole app lives under `/gitogether2026`, set in `../shared/basePath.js`, so 
 }
 ```
 
-- A team has 2–3 members, and the first one is the team leader.
-- Roll numbers look like `26N000` or `26Z000`, and each one can only be registered once. Batch 24 and older can't register.
-- Each member's email is worked out from their roll number, like `26n000@psgtech.ac.in`, and only the team leader gets the confirmation email.
-- Phone numbers are 10-digit Indian numbers. Spaces and a `+91` at the start are fine.
-- Team names don't have to be unique. Every team gets its own team code, like `GT-7KQ2MX`.
+| Field | Rules |
+| --- | --- |
+| `teamName` | Up to 60 characters. Doesn't have to be unique. Every team gets its own team code, like `GT-7KQ2MX`. |
+| `members` | 2–3 members. The first one is the team leader, and only they get the confirmation email. |
+| `members[].name` | Up to 100 characters. |
+| `members[].phone` | A 10-digit Indian number. Spaces and a `+91` at the start are fine. |
+| `members[].rollNumber` | Looks like `26N000` or `26Z000`, and can only be registered once. Batch 24 and older can't register. Each member's email is worked out from this, like `26n000@psgtech.ac.in`. |
 
 If it works, you get back:
 
@@ -81,25 +137,13 @@ If it works, you get back:
 | `409` | A roll number is already registered |
 | `500` | Something went wrong on the server |
 
-Errors come back as `{ "error": "A message you can show the user" }`.
+Errors come back as `{ "error": "A message you can show the user" }`. The exception is a request body that isn't valid JSON, which gets a `400` with Express's own HTML error page.
 
-`emailQueued` means the email is on its way, not that it has arrived. The API replies first and sends it in the background. A failed email is tried twice more, after 30 seconds and then 2 minutes. If those fail too, the team's `emailStatus` becomes `failed`.
-
-### `GET /api/status`
-
-Tells the website whether registration is open: `{ "registrationOpen": true }`.
-
-### `GET /api/health`
-
-Tells you whether the API can reach the database.
+`emailQueued` is `false` when emails are turned off. When it's `true`, the email is on its way, but it may not have arrived yet. The API replies first and sends it in the background. A failed email is tried twice more, after 30 seconds and then 2 minutes. If those fail too, the team's `emailStatus` becomes `failed`.
 
 ### Admin dashboard
 
-The page is at `/gitogether2026/admin`. Logging in with `ADMIN_PASSWORD` sets a cookie that lasts 30 days, and using the dashboard renews it. Changing the password logs everyone out.
-
-- `POST /api/admin/login` takes `{ "password": "..." }`.
-- `GET /api/admin/teams` returns every team, newest first.
-- `POST /api/admin/logout` ends the session.
+The page is at `/gitogether2026/admin`. Logging in with `ADMIN_PASSWORD` sets a cookie that lasts 30 days, and using the dashboard renews it. Changing the password logs everyone out. A wrong password, or a request to `/api/admin/teams` without a valid login, gets a `401`.
 
 Years come from roll numbers, in `getStudentYear` in `../shared/teamRules.js`. Anything that doesn't fit is listed under "Check these".
 
@@ -114,8 +158,6 @@ Each team's pass is made when its email goes out, and it isn't stored. If a pass
 
 The pass can show Latin and Tamil text. Anything else in a name, like emoji, is left off the pass.
 
-The GitHub mark is used with permission through the club's GitHub program, so please keep it unmodified.
-
 ## What gets saved
 
-- **Teams:** team name, team code, whether the leader's email went out (`emailStatus` is `pending`, `sent`, or `failed`), and its members. Each member has a name, phone, roll number, email, and whether they're the leader.
+- **Teams:** team name, team code, whether the leader's email went out (`emailStatus` is `pending`, `sent`, or `failed`), when the team was created and last updated (`createdAt` and `updatedAt`), and its members. Each member has a name, phone, roll number, email, and whether they're the leader.

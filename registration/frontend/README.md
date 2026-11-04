@@ -16,6 +16,7 @@ Open http://localhost:5173/gitogether2026/registration. Form submissions go to t
 ```text
 src/
 ├── components/
+│   ├── admin/     # The admin login and dashboard
 │   ├── auth/      # The registration page and form
 │   ├── layout/    # Header, footer, background
 │   └── ui/        # Inputs, buttons, and other small pieces
@@ -29,7 +30,7 @@ src/
 | Form fields or wording | `src/components/auth/RegisterForm.jsx` |
 | Team size, email domain, or phone and roll number rules | `../shared/teamRules.js` |
 | Event date, used by the countdown, pass, and email | `EVENT_DATE` in `../shared/teamRules.js` |
-| WhatsApp group link | `WHATSAPP_URL` in `backend/email.js` |
+| WhatsApp group link | `WHATSAPP_URL` in `../backend/email.js` |
 | Colors and fonts | `tailwind.config.js` |
 | Animations | `src/lib/motion.js` |
 | Logo | `npm run pass-art` in `../backend`, which redraws `src/assets/wordmark.svg` |

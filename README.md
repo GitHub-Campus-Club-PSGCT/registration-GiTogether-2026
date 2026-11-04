@@ -4,6 +4,11 @@ This is the registration site for GiTogether 2026. Teams of 2–3 sign up and ge
 
 This repo only covers registration. Nothing else for the event lives here.
 
+| Page | Live URL |
+| --- | --- |
+| Registration | https://ghcc.psgtech.ac.in/gitogether2026/registration |
+| Admin dashboard | https://ghcc.psgtech.ac.in/gitogether2026/admin |
+
 ## How it works
 
 The React site sends the form to a small API, and the API saves the team in MongoDB. Both run from one Docker image, so they share one URL.
@@ -12,19 +17,20 @@ The React site sends the form to a small API, and the API saves the team in Mong
 registration/
 ├── frontend/           # The website
 ├── backend/            # Registration logic, database code, and emails
-└── shared/             # Form rules used by both the website and the API
+└── shared/             # Form rules and the base path, used by both the website and the API
 ```
 
 More detail is in the [frontend](registration/frontend/README.md) and [backend](registration/backend/README.md) READMEs.
 
 ## Run it locally
 
-You'll need Node.js 20.19 or newer and a MongoDB database.
+You'll need Node.js 22 and a MongoDB database.
 
 ```bash
 # Terminal 1: the API
 cd registration/backend
 npm ci
+cp .env.example .env
 npm run dev
 
 # Terminal 2: the website
@@ -37,11 +43,9 @@ Then open http://localhost:5173/gitogether2026/registration.
 
 ## Deploy it
 
-You'll need Docker on the server and a MongoDB database.
+The `build-and-push` job in [ci.yml](.github/workflows/ci.yml) deploys the site. It builds the Docker image, pushes it to GHCR as `ghcr.io/github-campus-club-psgct/gitogether2026regis:latest`, and asks Jenkins to deploy it. It runs on every push to `main` and on every pull request.
 
-1. Copy `registration/backend/.env.example` to `registration/backend/.env` and fill in the variables below.
-2. Run `docker compose up -d --build`.
-3. Add this to the nginx `server` block that handles HTTPS for the site. To use a different port, set `APP_PORT`.
+The site's nginx has to send `/gitogether2026` to the app, with something like this in the `server` block that handles HTTPS. Don't change this prefix: the app and nginx have to match, and any other prefix takes the site down.
 
 ```nginx
 # No path after the port: the app expects to receive the /gitogether2026 prefix.
@@ -65,7 +69,9 @@ To check that everything's connected, visit `/gitogether2026/api/health` on your
 
 If you're using MongoDB Atlas, add the server's IP address to its network access settings. The server also has to be allowed to make outgoing connections to `SMTP_HOST` on `SMTP_PORT`, or emails will fail.
 
-To deploy a new version, run `git pull` and then `docker compose up -d --build`. Emails still being sent get up to 4 minutes to finish first.
+To run the image by hand instead, copy `registration/backend/.env.example` to `registration/backend/.env`, fill it in, and run `docker compose up -d --build`. To use a different port, set `APP_PORT`. With `compose.yaml`, emails still being sent get up to 4 minutes to finish before the app stops.
+
+The app uses these settings:
 
 | Variable | Needed? | What it's for |
 | --- | --- | --- |
@@ -77,4 +83,4 @@ To deploy a new version, run `git pull` and then `docker compose up -d --build`.
 | `SMTP_PORT` | No | Defaults to `587` |
 | `EMAIL_FROM` | No | The sender address. Defaults to `SMTP_USER`. |
 
-The app only reads these when it starts, so run `docker compose up -d` after changing them, like when opening or closing registration.
+The app only reads these when it starts, so restart it after changing them, like when opening or closing registration.
