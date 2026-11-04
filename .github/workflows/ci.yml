@@ -44,3 +44,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build .
+      
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t ghcr.io/github-campus-club-psgct/gitogether2026regis:latest .
+
+      - name: Push Docker image to GHCR
+        run: |
+          docker push ghcr.io/github-campus-club-psgct/gitogether2026regis:latest
+      
+      - name: Trigger Jenkins Deploy
+        run: |
+          curl -k -X POST "http://jendc.psgtech.ac.in/generic-webhook-trigger/invoke?token=gitogether2026regis"
