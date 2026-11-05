@@ -16,7 +16,7 @@ Welcome to the paddock, Alex Morgan!
 
 Team Alpha is officially on the grid for GiTogether 2026, and we're so glad to have you with us.
 
-Your team's paddock pass is attached :)
+Your team's paddock pass is attached :) Show the QR code on it at check-in on race day.
 
 ![The paddock pass, shown in the email](sample-pass.png)
 
@@ -50,7 +50,11 @@ Team Alpha is officially on the grid for GiTogether 2026, and we're so glad to h
 
 Team: Team Alpha
 
+Team code: GT-7KQ2MX
+
 Members: Alex Morgan, Sam Lee, Priya Raman
+
+Show your team code at check-in on race day.
 
 Before lights out, tune in to team radio. Join the WhatsApp group for all the updates, and bring your crew along:
 https://chat.whatsapp.com/H1ZTM3wvpVdCTJLqwfOfen?s=cl&p=a&mlu=4&ilr=4&iam=2

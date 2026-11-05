@@ -16,7 +16,7 @@ Open http://localhost:5173/gitogether2026/registration. Form submissions go to t
 ```text
 src/
 ├── components/
-│   ├── admin/     # The admin login and dashboard
+│   ├── admin/     # The admin login, dashboard, and attendance scanner
 │   ├── auth/      # The registration page and form
 │   ├── layout/    # Header, footer, background
 │   └── ui/        # Inputs, buttons, and other small pieces

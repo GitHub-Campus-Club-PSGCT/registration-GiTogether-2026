@@ -13,11 +13,14 @@
     "express": "^4.22.3",
     "mongoose": "^9.0.0",
     "nodemailer": "^10.3.1",
+    "qrcode": "^1.5.4",
     "satori": "^0.63.2"
   },
   "devDependencies": {
+    "jsqr": "^1.4.0",
     "mailparser": "^3.14.1",
     "mongodb-memory-server-core": "^11.3.0",
+    "pngjs": "^7.0.0",
     "smtp-server": "^3.21.3"
   }
 }

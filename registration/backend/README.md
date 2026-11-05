@@ -93,6 +93,9 @@ The whole app lives under `/gitogether2026`, set in `../shared/basePath.js`, so 
 | `GET` | `/api/health` | No | Says whether the API can reach the database | `200` `{ "status": "connected" }` |
 | `POST` | `/api/admin/login` | No | Logs in to the dashboard, given `{ "password": "..." }` | `200` `{ "ok": true }` |
 | `GET` | `/api/admin/teams` | Yes | Lists every team, newest first | `200` `{ "teams": [...] }` |
+| `GET` | `/api/admin/teams/:teamCode` | Yes | Finds one team, for the scanner | `200` `{ "team": {...} }` |
+| `POST` | `/api/admin/teams/:teamCode/attendance` | Yes | Marks one member, given `{ "rollNumber": "26N000", "present": true }` | `200` `{ "team": {...} }` |
+| `GET` | `/api/admin/attendance.csv` | Yes | Downloads attendance for everyone | `200` with a CSV file |
 | `POST` | `/api/admin/logout` | No | Ends the session | `200` `{ "ok": true }` |
 
 If the database is down, `/api/health` returns `500` with `{ "status": "database connection failed" }`.
@@ -147,9 +150,23 @@ The page is at `/gitogether2026/admin`. Logging in with `ADMIN_PASSWORD` sets a 
 
 Years come from roll numbers, in `getStudentYear` in `../shared/teamRules.js`. Anything that doesn't fit is listed under "Check these".
 
+### Attendance
+
+Attendance is taken once, at entry, and each member is marked separately because a team shares one pass.
+
+1. On the dashboard, tap **Scan pass** and point the camera at the QR on the team's pass.
+2. Mark each member who's there. Each mark saves straight away, and tapping it again undoes it.
+3. Tap **Scan next team**. The scanner ignores the last pass until it has left the camera's view, so it doesn't reopen the same team.
+
+For a late arrival, or a pass that won't scan, tap **Find team**, search for the team, and mark them on its card. Marking someone who's already marked keeps the time they first arrived.
+
+The QR only holds the team code. It does nothing without a dashboard login, so anyone else who scans it just sees the code.
+
+The camera only works over HTTPS or on `localhost`, so opening a local dev server from a phone over `http://` will show the camera error.
+
 ## The paddock pass
 
-Each team's pass is made when its email goes out, and it isn't stored. If a pass can't be made, the leader gets a plain email with the team's details instead.
+Each team's pass is made when its email goes out, and it isn't stored. If a pass can't be made, the leader gets a plain email with the team's details and team code instead.
 
 - To change the event date, edit `EVENT_DATE` in `../shared/teamRules.js`. The website's countdown, the pass and the email all use it.
 - To change the layout, edit `pass/renderPass.js`.
@@ -160,4 +177,4 @@ The pass can show Latin and Tamil text. Anything else in a name, like emoji, is 
 
 ## What gets saved
 
-- **Teams:** team name, team code, whether the leader's email went out (`emailStatus` is `pending`, `sent`, or `failed`), when the team was created and last updated (`createdAt` and `updatedAt`), and its members. Each member has a name, phone, roll number, email, and whether they're the leader.
+- **Teams:** team name, team code, whether the leader's email went out (`emailStatus` is `pending`, `sent`, or `failed`), when the team was created and last updated (`createdAt` and `updatedAt`), and its members. Each member has a name, phone, roll number, email, whether they're the leader, and when they were marked present (`checkedInAt`, empty until then).

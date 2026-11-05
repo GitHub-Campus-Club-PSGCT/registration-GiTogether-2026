@@ -8,6 +8,8 @@ const memberSchema = new mongoose.Schema(
     phone: { type: String, required: true },
     rollNumber: { type: String, required: true, uppercase: true, trim: true },
     isLeader: { type: Boolean, default: false },
+    // Empty until they're marked present at the event.
+    checkedInAt: { type: Date, default: null },
   },
   { _id: false },
 );

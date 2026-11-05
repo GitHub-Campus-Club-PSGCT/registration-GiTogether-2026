@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { after, before, beforeEach, test } from 'node:test';
+import jsQR from 'jsqr';
 import { simpleParser } from 'mailparser';
 import { MongoMemoryServer } from 'mongodb-memory-server-core';
 import mongoose from 'mongoose';
+import { PNG } from 'pngjs';
 import { SMTPServer } from 'smtp-server';
 
 const SMTP_PORT = 2599;
@@ -15,8 +17,10 @@ process.env.MONGODB_URI = database.getUri('gitogether_test');
 process.env.EMAIL_RETRY_DELAYS_MS = '20,20';
 
 const { connectToDatabase } = await import('../db.js');
-const { handleAdminLogin, handleAdminLogout, handleAdminTeams } = await import('../admin.js');
+const { handleAdminAttendance, handleAdminAttendanceCsv, handleAdminLogin, handleAdminLogout, handleAdminTeam, handleAdminTeams } = await import('../admin.js');
+const { buildPlainMessage } = await import('../email.js');
 const { handleRegister, handleStatus } = await import('../handlers.js');
+const { renderPass } = await import('../pass/renderPass.js');
 const { getStudentYear } = await import('../../shared/teamRules.js');
 const { Team } = await import('../models.js');
 
@@ -43,10 +47,11 @@ const smtp = new SMTPServer({
 const member = (name, rollNumber, phone = '9876543210') => ({ name, phone, rollNumber });
 const teamOf = (...members) => ({ teamName: 'Team Alpha', members });
 
-const call = async (handler, { method = 'POST', body, cookie } = {}) => {
-  const result = {};
+const call = async (handler, { method = 'POST', body, cookie, params } = {}) => {
+  const result = { headers: {} };
   const res = {
     setHeader(name, value) {
+      result.headers[name] = value;
       if (name === 'Set-Cookie') result.cookie = value;
     },
     status(code) {
@@ -57,8 +62,12 @@ const call = async (handler, { method = 'POST', body, cookie } = {}) => {
       result.body = data;
       return this;
     },
+    send(data) {
+      result.body = data;
+      return this;
+    },
   };
-  await handler({ method, body, headers: cookie ? { cookie } : {} }, res);
+  await handler({ method, body, params, headers: cookie ? { cookie } : {} }, res);
   return result;
 };
 
@@ -137,6 +146,8 @@ test('emails only the team leader, with the pass and the WhatsApp button', async
   assert.equal(email.subject, 'Welcome to the paddock, Team Alpha! 🏁');
   assert.match(email.text, /chat\.whatsapp\.com/);
   assert.match(email.text, /Lights out on 23 Nov\. See you on the grid!/);
+  assert.match(email.text, /Show the QR code on it at check-in/);
+  assert.match(email.html, /Show the QR code on it at check-in/);
   assert.doesNotMatch(email.text, new RegExp(body.teamCode));
   assert.match(email.html, />Join the WhatsApp group<\/span><\/a>/);
   assert.match(email.html, /Alex &#60;b&#62;/);
@@ -320,4 +331,144 @@ test('does not retry when emails are off', async () => {
   const { body } = await register(teamOf(member('A', '26N000'), member('B', '26Z001')));
   assert.equal(await waitForEmailStatus(body.teamCode), 'failed');
   assert.equal(emailAttempts, 0);
+});
+
+const readQr = (png) => {
+  const { data, width, height } = PNG.sync.read(png);
+  return jsQR(new Uint8ClampedArray(data), width, height)?.data;
+};
+
+test('the QR on the pass holds the team code, however long the names are', async () => {
+  const members = [
+    { name: 'A very long name '.repeat(5), rollNumber: '26N000', email: '26n000@psgtech.ac.in', isLeader: true },
+    { name: 'Sam', rollNumber: '26Z001', email: '26z001@psgtech.ac.in', isLeader: false },
+  ];
+  assert.equal(readQr(await renderPass({ teamName: 'Team Alpha', teamCode: 'GT-7KQ2MX', members })), 'GT-7KQ2MX');
+  assert.equal(readQr(await renderPass({ teamName: 'x y '.repeat(15), teamCode: 'GT-WWWMMM', members })), 'GT-WWWMMM');
+});
+
+test('the plain email has the team code for checking in', () => {
+  const members = [{ name: 'Alex', isLeader: true }, { name: 'Sam', isLeader: false }];
+  const { text } = buildPlainMessage({ leader: members[0], members, teamName: 'Team Alpha', teamCode: 'GT-7KQ2MX' });
+  assert.match(text, /Team code: GT-7KQ2MX/);
+});
+
+const registerTeam = async (...members) => {
+  process.env.SEND_EMAILS = 'false';
+  const { body } = await register(teamOf(...members));
+  await waitForEmailStatus(body.teamCode);
+  return body.teamCode;
+};
+
+const markPresent = (cookie, teamCode, rollNumber, present = true) =>
+  call(handleAdminAttendance, { cookie, params: { teamCode }, body: { rollNumber, present } });
+
+const checkedIn = (team) => team.members.filter((person) => person.checkedInAt).map((person) => person.rollNumber);
+
+test('check-in needs a login', async () => {
+  const teamCode = await registerTeam(member('A', '26N000'), member('B', '26Z001'));
+  assert.equal((await call(handleAdminTeam, { method: 'GET', params: { teamCode } })).status, 401);
+  assert.equal((await markPresent(undefined, teamCode, '26N000')).status, 401);
+  assert.equal((await call(handleAdminAttendanceCsv, { method: 'GET' })).status, 401);
+  assert.deepEqual(checkedIn(await Team.findOne({ teamCode }).lean()), []);
+});
+
+test('finds a team by its code, in any case, and says when there is none', async () => {
+  const cookie = await logIn();
+  const teamCode = await registerTeam(member('A', '26N000'), member('B', '26Z001'));
+
+  const found = await call(handleAdminTeam, { method: 'GET', cookie, params: { teamCode: ` ${teamCode.toLowerCase()} ` } });
+  assert.equal(found.status, 200);
+  assert.equal(found.body.team.teamCode, teamCode);
+
+  const missing = await call(handleAdminTeam, { method: 'GET', cookie, params: { teamCode: 'GT-NOPE00' } });
+  assert.equal(missing.status, 404);
+  assert.equal(missing.body.error, 'No team has the code GT-NOPE00.');
+});
+
+test('marks each member separately, and can undo a mark', async () => {
+  const cookie = await logIn();
+  const teamCode = await registerTeam(member('A', '26N000'), member('B', '26Z001'), member('C', '26N002'));
+
+  const first = await markPresent(cookie, teamCode, '26Z001');
+  assert.equal(first.status, 200);
+  assert.deepEqual(checkedIn(first.body.team), ['26Z001']);
+
+  const second = await markPresent(cookie, teamCode, '26N000');
+  assert.deepEqual(checkedIn(second.body.team), ['26N000', '26Z001']);
+
+  const undone = await markPresent(cookie, teamCode, '26Z001', false);
+  assert.deepEqual(checkedIn(undone.body.team), ['26N000']);
+  assert.deepEqual(checkedIn(await Team.findOne({ teamCode }).lean()), ['26N000']);
+});
+
+test('marking someone twice keeps the time they first arrived', async () => {
+  const cookie = await logIn();
+  const teamCode = await registerTeam(member('A', '26N000'), member('B', '26Z001'));
+
+  const first = await markPresent(cookie, teamCode, '26N000');
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  const second = await markPresent(cookie, teamCode, '26N000');
+  assert.equal(second.status, 200);
+  assert.deepEqual(second.body.team.members[0].checkedInAt, first.body.team.members[0].checkedInAt);
+
+  const undoAgain = await markPresent(cookie, teamCode, '26Z001', false);
+  assert.equal(undoAgain.status, 200);
+  assert.deepEqual(checkedIn(undoAgain.body.team), ['26N000']);
+});
+
+test('two people marking the same team at once both count', async () => {
+  const cookie = await logIn();
+  const teamCode = await registerTeam(member('A', '26N000'), member('B', '26Z001'), member('C', '26N002'));
+  await Promise.all(['26N000', '26Z001', '26N002'].map((rollNumber) => markPresent(cookie, teamCode, rollNumber)));
+  assert.deepEqual(checkedIn(await Team.findOne({ teamCode }).lean()), ['26N000', '26Z001', '26N002']);
+});
+
+test('can mark teams saved before check-in existed', async () => {
+  const cookie = await logIn();
+  const teamCode = await registerTeam(member('A', '26N000'), member('B', '26Z001'));
+  await Team.collection.updateOne({ teamCode }, { $unset: { 'members.$[].checkedInAt': '' } });
+  assert.equal('checkedInAt' in (await Team.findOne({ teamCode }).lean()).members[0], false);
+
+  const { status, body } = await markPresent(cookie, teamCode, '26N000');
+  assert.equal(status, 200);
+  assert.deepEqual(checkedIn(body.team), ['26N000']);
+});
+
+test('refuses marks that do not make sense', async () => {
+  const cookie = await logIn();
+  const teamCode = await registerTeam(member('A', '26N000'), member('B', '26Z001'));
+
+  assert.equal((await markPresent(cookie, teamCode, '26N999')).status, 404);
+  assert.equal((await markPresent(cookie, 'GT-NOPE00', '26N000')).status, 404);
+  assert.equal((await markPresent(cookie, teamCode, { $ne: '' })).status, 400);
+  assert.equal((await markPresent(cookie, teamCode, '26N000', 'yes')).status, 400);
+  assert.equal((await call(handleAdminAttendance, { cookie, params: { teamCode } })).status, 400);
+  assert.equal((await call(handleAdminAttendance, { method: 'GET', cookie, params: { teamCode } })).status, 405);
+  assert.deepEqual(checkedIn(await Team.findOne({ teamCode }).lean()), []);
+});
+
+test('a sign-up cannot mark itself as present', async () => {
+  const teamCode = await registerTeam({ ...member('A', '26N000'), checkedInAt: new Date().toISOString() }, member('B', '26Z001'));
+  assert.deepEqual(checkedIn(await Team.findOne({ teamCode }).lean()), []);
+});
+
+test('the attendance download lists everyone and is safe to open in a spreadsheet', async () => {
+  const cookie = await logIn();
+  process.env.SEND_EMAILS = 'false';
+  const { body } = await register({ teamName: '=HYPERLINK("http://bad.example")', members: [member('Alex, Jr', '26N000'), member('அருண்', '26Z001')] });
+  await waitForEmailStatus(body.teamCode);
+  await markPresent(cookie, body.teamCode, '26N000');
+
+  const { status, body: csv, headers } = await call(handleAdminAttendanceCsv, { method: 'GET', cookie });
+  assert.equal(status, 200);
+  assert.match(headers['Content-Type'], /text\/csv/);
+  assert.match(headers['Content-Disposition'], /attachment/);
+  assert.equal(csv[0], '﻿');
+
+  const [heading, leader, teammate] = csv.slice(1).trim().split('\r\n');
+  assert.equal(heading, 'Team,Team code,Name,Roll number,Email,Phone,Leader,Present,Checked in at');
+  assert.ok(leader.startsWith(`"'=HYPERLINK(""http://bad.example"")",${body.teamCode},"Alex, Jr",26N000,26n000@psgtech.ac.in,9876543210,Yes,Yes,"`), leader);
+  assert.ok(teammate.endsWith(',26Z001,26z001@psgtech.ac.in,9876543210,No,No,'), teammate);
+  assert.match(teammate, /அருண்/);
 });

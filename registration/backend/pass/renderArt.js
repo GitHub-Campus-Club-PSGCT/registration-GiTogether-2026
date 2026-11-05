@@ -30,8 +30,8 @@ const header = box(
 // Added straight into the SVG because an image inside this artwork wouldn't be drawn on the final pass.
 const DIAGONAL = `<polygon points="0,340 ${WIDTH},258 ${WIDTH},340" fill="#fff"/><polygon points="0,328 ${WIDTH},246 ${WIDTH},258 0,340" fill="${RED}"/>`;
 
-const label = (text, width, justifyContent = 'flex-start') =>
-  box({ width, height: 26, alignItems: 'center', justifyContent, fontFamily: 'F1', fontWeight: 700, fontSize: 19, letterSpacing: 3, color: GREY }, text);
+const label = (text, width) =>
+  box({ width, height: 26, alignItems: 'center', fontFamily: 'F1', fontWeight: 700, fontSize: 19, letterSpacing: 3, color: GREY }, text);
 
 const leaderTag = box(
   { width: 118, height: 38, alignItems: 'center', justifyContent: 'center', background: RED, fontFamily: 'F1', fontWeight: 700, fontSize: 17, letterSpacing: 2, color: '#fff' },
@@ -42,7 +42,7 @@ const ART = {
   header: [header, WIDTH, 340],
   'label-team': [label('TEAM', 120), 120, 26],
   'label-team-code': [label('TEAM CODE', 220), 220, 26],
-  'label-race-day': [label('RACE DAY', 200, 'flex-end'), 200, 26],
+  'label-race-day': [label('RACE DAY', 200), 200, 26],
   'tag-leader': [leaderTag, 118, 38],
 };
 

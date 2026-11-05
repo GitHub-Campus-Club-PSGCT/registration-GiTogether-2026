@@ -1,4 +1,7 @@
+import { BASE_PATH } from '@shared/basePath.js';
 import { apiRequest } from '@/lib/apiClient';
+
+export const ATTENDANCE_CSV_URL = `${BASE_PATH}/api/admin/attendance.csv`;
 
 export function registerTeam(team) {
   return apiRequest('/register', { method: 'POST', body: team });
@@ -18,4 +21,12 @@ export function adminLogout() {
 
 export function getAdminTeams() {
   return apiRequest('/admin/teams');
+}
+
+export function getAdminTeam(teamCode) {
+  return apiRequest(`/admin/teams/${encodeURIComponent(teamCode)}`);
+}
+
+export function setMemberAttendance(teamCode, rollNumber, present) {
+  return apiRequest(`/admin/teams/${encodeURIComponent(teamCode)}/attendance`, { method: 'POST', body: { rollNumber, present } });
 }

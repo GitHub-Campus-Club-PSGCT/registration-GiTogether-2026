@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import mongoose from 'mongoose';
 import { fileURLToPath } from 'node:url';
-import { handleAdminLogin, handleAdminLogout, handleAdminTeams } from './admin.js';
+import { handleAdminAttendance, handleAdminAttendanceCsv, handleAdminLogin, handleAdminLogout, handleAdminTeam, handleAdminTeams } from './admin.js';
 import { connectToDatabase } from './db.js';
 import { handleHealth, handleRegister, handleStatus, waitForPendingEmails } from './handlers.js';
 import { BASE_PATH } from '../shared/basePath.js';
@@ -22,6 +22,9 @@ site.get('/api/health', handleHealth);
 site.post('/api/admin/login', handleAdminLogin);
 site.post('/api/admin/logout', handleAdminLogout);
 site.get('/api/admin/teams', handleAdminTeams);
+site.get('/api/admin/teams/:teamCode', handleAdminTeam);
+site.post('/api/admin/teams/:teamCode/attendance', handleAdminAttendance);
+site.get('/api/admin/attendance.csv', handleAdminAttendanceCsv);
 
 site.get('/', (req, res) => res.redirect(`${BASE_PATH}/registration`));
 

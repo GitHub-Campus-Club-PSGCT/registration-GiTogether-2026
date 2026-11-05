@@ -57,8 +57,8 @@ export function handleAdminLogout(req, res) {
   return res.status(200).json({ ok: true });
 }
 
-export async function handleAdminTeams(req, res) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed.' });
+const adminRoute = (method, handler) => async (req, res) => {
+  if (req.method !== method) return res.status(405).json({ error: 'Method not allowed.' });
   res.setHeader('Cache-Control', 'no-store');
   if (!hasValidSession(req)) return res.status(401).json({ error: 'Enter password :)' });
 
@@ -67,10 +67,67 @@ export async function handleAdminTeams(req, res) {
 
   try {
     await connectToDatabase();
-    const teams = await Team.find().sort({ createdAt: -1 }).lean();
-    return res.status(200).json({ teams });
+    return await handler(req, res);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: SERVER_ERROR });
   }
-}
+};
+
+export const handleAdminTeams = adminRoute('GET', async (req, res) => {
+  const teams = await Team.find().sort({ createdAt: -1 }).lean();
+  return res.status(200).json({ teams });
+});
+
+const readTeamCode = (req) => req.params.teamCode.trim().toUpperCase();
+
+export const handleAdminTeam = adminRoute('GET', async (req, res) => {
+  const teamCode = readTeamCode(req);
+  const team = await Team.findOne({ teamCode }).lean();
+  if (!team) return res.status(404).json({ error: `No team has the code ${teamCode}.` });
+  return res.status(200).json({ team });
+});
+
+export const handleAdminAttendance = adminRoute('POST', async (req, res) => {
+  const { rollNumber, present } = req.body ?? {};
+  if (typeof rollNumber !== 'string' || typeof present !== 'boolean') return res.status(400).json({ error: 'Pick a member to mark.' });
+
+  const teamCode = readTeamCode(req);
+  // Updates only this member, so two people marking the same team can't undo each other.
+  const updated = await Team.findOneAndUpdate(
+    { teamCode, members: { $elemMatch: { rollNumber, checkedInAt: present ? null : { $ne: null } } } },
+    { $set: { 'members.$.checkedInAt': present ? new Date() : null } },
+    { returnDocument: 'after' },
+  ).lean();
+
+  // Nothing changed if they were already marked this way, which keeps the time they first arrived.
+  const team = updated ?? (await Team.findOne({ teamCode, 'members.rollNumber': rollNumber }).lean());
+  if (!team) return res.status(404).json({ error: 'That member isn\'t on this team.' });
+  return res.status(200).json({ team });
+});
+
+const CSV_COLUMNS = ['Team', 'Team code', 'Name', 'Roll number', 'Email', 'Phone', 'Leader', 'Present', 'Checked in at'];
+
+// Spreadsheets run a cell starting with one of these as a formula, and names come from the public form.
+const csvCell = (value) => {
+  const text = String(value).replace(/^[=+\-@\t\r]/, "'$&");
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+};
+
+const csvRow = (cells) => cells.map(csvCell).join(',');
+
+const formatCheckInTime = (date) =>
+  new Date(date).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+
+const attendanceRow = ({ teamName, teamCode }, { name, rollNumber, email, phone, isLeader, checkedInAt }) =>
+  csvRow([teamName, teamCode, name, rollNumber, email, phone, isLeader ? 'Yes' : 'No', checkedInAt ? 'Yes' : 'No', checkedInAt ? formatCheckInTime(checkedInAt) : '']);
+
+export const handleAdminAttendanceCsv = adminRoute('GET', async (req, res) => {
+  const teams = await Team.find().sort({ teamName: 1 }).lean();
+  const rows = teams.flatMap((team) => team.members.map((member) => attendanceRow(team, member)));
+
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="GiTogether-2026-Attendance.csv"');
+  // The mark at the start tells Excel this is UTF-8, so Tamil names show properly.
+  return res.status(200).send(`﻿${[csvRow(CSV_COLUMNS), ...rows].join('\r\n')}\r\n`);
+});

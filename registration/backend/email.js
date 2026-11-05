@@ -34,7 +34,7 @@ const buildPassMessage = ({ leader, teamName }) => ({
 
 ${teamName} is officially on the grid for GiTogether 2026, and we're so glad to have you with us.
 
-Your team's paddock pass is attached :)
+Your team's paddock pass is attached :) Show the QR code on it at check-in on race day.
 
 Before lights out, tune in to team radio. Join the WhatsApp group for all the updates, and bring your crew along:
 ${WHATSAPP_URL}
@@ -43,7 +43,7 @@ Lights out on ${EVENT_DAY_LABEL}. See you on the grid!
 `,
   html: `<p>Welcome to the paddock, ${escapeHtml(leader.name)}!</p>
 <p>${escapeHtml(teamName)} is officially on the grid for GiTogether 2026, and we're so glad to have you with us.</p>
-<p>Your team's paddock pass is attached :)</p>
+<p>Your team's paddock pass is attached :) Show the QR code on it at check-in on race day.</p>
 <p><img src="cid:${PASS_IMAGE_ID}" width="400" alt="Your GiTogether 2026 paddock pass" style="display:block;max-width:100%;height:auto"></p>
 <p>Before lights out, tune in to team radio. Join the WhatsApp group for all the updates, and bring your crew along:</p>
 <p><a href="${escapeHtml(WHATSAPP_URL)}" style="display:inline-block;padding:12px 22px;border-radius:8px;background-color:#16a34a;color:#ffffff;font-weight:600;line-height:20px;text-decoration:none"><img src="cid:${WHATSAPP_ICON_ID}" width="20" height="20" alt="" style="display:inline-block;margin-right:10px;border:0;vertical-align:middle"><span style="vertical-align:middle">Join the WhatsApp group</span></a></p>
@@ -51,15 +51,18 @@ Lights out on ${EVENT_DAY_LABEL}. See you on the grid!
 `,
 });
 
-// Used when the pass couldn't be made, so the leader still gets the team's details.
-const buildPlainMessage = ({ leader, members, teamName }) => ({
+// Used when the pass couldn't be made, so the leader still gets the team's details, including the code to check in with.
+export const buildPlainMessage = ({ leader, members, teamName, teamCode }) => ({
   subject: `Welcome to the paddock, ${teamName}! 🏁`,
   text: `Welcome to the paddock, ${leader.name}!
 
 ${teamName} is officially on the grid for GiTogether 2026, and we're so glad to have you with us.
 
 Team: ${teamName}
+Team code: ${teamCode}
 Members: ${members.map(({ name }) => name).join(', ')}
+
+Show your team code at check-in on race day.
 
 Before lights out, tune in to team radio. Join the WhatsApp group for all the updates, and bring your crew along:
 ${WHATSAPP_URL}
@@ -112,7 +115,7 @@ async function sendWithRetries({ members, teamName, teamCode }) {
 
   const leader = members.find((member) => member.isLeader);
   const pass = await renderPassSafely({ teamName, teamCode, members });
-  const message = pass ? buildPassMessage({ leader, teamName }) : buildPlainMessage({ leader, members, teamName });
+  const message = pass ? buildPassMessage({ leader, teamName }) : buildPlainMessage({ leader, members, teamName, teamCode });
 
   if (await sendEmail({ leader, message, pass })) return true;
   for (const delay of getRetryDelays()) {

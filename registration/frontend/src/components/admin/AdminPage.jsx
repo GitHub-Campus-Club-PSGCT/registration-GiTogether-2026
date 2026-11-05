@@ -46,6 +46,12 @@ export default function AdminPage() {
     return () => clearInterval(interval);
   }, [status, load]);
 
+  const handleTeamChange = useCallback((updated) => {
+    setTeams((current) => (current.some((team) => team.teamCode === updated.teamCode)
+      ? current.map((team) => (team.teamCode === updated.teamCode ? updated : team))
+      : [updated, ...current]));
+  }, []);
+
   const handleLogout = async () => {
     await adminLogout().catch(() => {});
     setTeams([]);
@@ -58,7 +64,7 @@ export default function AdminPage() {
       <AnimatePresence mode="wait">
         {status === 'locked' && <AdminLogin key="login" onSuccess={load} />}
         {status === 'open' && (
-          <AdminDashboard key="dashboard" teams={teams} loadError={loadError} refreshing={refreshing} onRefresh={load} onLogout={handleLogout} />
+          <AdminDashboard key="dashboard" teams={teams} loadError={loadError} refreshing={refreshing} onRefresh={load} onLogout={handleLogout} onTeamChange={handleTeamChange} />
         )}
       </AnimatePresence>
     </div>

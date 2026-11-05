@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { Resvg, initWasm } from '@resvg/resvg-wasm';
+import QRCode from 'qrcode';
 import satori from 'satori';
 import { EVENT_DATE_LABEL } from '../../shared/teamRules.js';
 
@@ -13,6 +14,8 @@ const CHECK_SIZE = 22;
 const CHECK_COLUMNS = Math.ceil(WIDTH / CHECK_SIZE);
 const CHECK_ROWS = 3;
 const GITHUB_MARK_SIZE = 52;
+// A team code always makes a 21-square QR, so this draws each square exactly 10 wide and keeps its edges sharp.
+const QR_SIZE = 210;
 
 const readAsset = (path) => readFileSync(new URL(path, import.meta.url));
 
@@ -50,6 +53,18 @@ const buildChecks = () => {
 
 const CHECKS = buildChecks();
 
+// Only holds the team code, so the QR stays as simple as possible and survives a cracked or dim screen.
+const buildQr = (teamCode) => {
+  const { size, data } = QRCode.create(teamCode, { errorCorrectionLevel: 'H' }).modules;
+  const squares = [];
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      if (data[y * size + x]) squares.push(`M${x} ${y}h1v1h-1z`);
+    }
+  }
+  return dataUri(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" shape-rendering="crispEdges"><path d="${squares.join('')}" fill="${INK}"/></svg>`);
+};
+
 // The pass fonts only cover these scripts. Anything else, like emoji, is dropped so it can't draw as empty boxes.
 const printable = (text) => text.replace(/[^\p{Script=Latin}\p{Script=Tamil}\p{M}\p{N}\p{P}\p{Sc}\p{Zs}]/gu, '').replace(/\s+/g, ' ').trim();
 
@@ -85,9 +100,14 @@ const buildPass = ({ teamName, teamCode, members }) => {
       image(ART.team, 120, 26),
       bigText(shownName.length > 28 ? 44 : 66, shownName, { lineHeight: 1.08, marginTop: 6, wordBreak: 'break-word' }),
       box(
-        { marginTop: 28, marginBottom: 28, justifyContent: 'space-between' },
-        box({ flexDirection: 'column' }, image(ART.teamCode, 220, 26), bigText(42, teamCode, { marginTop: 2, letterSpacing: 1 })),
-        box({ flexDirection: 'column', alignItems: 'flex-end' }, image(ART.raceDay, 200, 26), bigText(42, RACE_DAY, { marginTop: 2 })),
+        { marginTop: 42, marginBottom: 24, justifyContent: 'space-between', alignItems: 'flex-start' },
+        // Reaches past the QR by the blank space around the text, so the letters themselves line up with its top and bottom.
+        box(
+          { flexDirection: 'column', justifyContent: 'space-between', height: QR_SIZE + 21, marginTop: -5 },
+          box({ flexDirection: 'column' }, image(ART.teamCode, 220, 26), bigText(42, teamCode, { marginTop: 2, letterSpacing: 1 })),
+          box({ flexDirection: 'column' }, image(ART.raceDay, 200, 26), bigText(42, RACE_DAY, { marginTop: 2 })),
+        ),
+        image(buildQr(teamCode), QR_SIZE, QR_SIZE),
       ),
       members.map(memberRow),
     ),
