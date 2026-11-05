@@ -1,14 +1,22 @@
 import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react';
-import { Check, Download, Layers, LogOut, MailWarning, RefreshCw, ScanLine, Search, SquareCheck, UserCheck, Users } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { Check, Download, Layers, LogOut, MailWarning, RefreshCw, ScanLine, Search, SquareCheck, UserCheck, Users, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import AttendanceSheet from '@/components/admin/AttendanceSheet';
 import FormBanner from '@/components/ui/FormBanner';
 import { countPresent, formatTime, teamMatches } from '@/lib/attendance';
 import { ATTENDANCE_CSV_URL } from '@/lib/authService';
-import { SPRING, cardVariants, riseVariants } from '@/lib/motion';
+import { SPRING, SPRING_QUICK, cardVariants, riseVariants, scrollPage } from '@/lib/motion';
 import { getStudentYear } from '@/lib/validation';
 
 const CheckInScanner = lazy(() => import('@/components/admin/CheckInScanner'));
+
+const PEOPLE = ['person', 'people'];
+const TEAMS = ['team', 'teams'];
+const unitFor = (count, [one, many]) => (count === 1 ? one : many);
+
+// Picking a filter scrolls to the teams if they start below this share of the screen.
+const RESULTS_IN_VIEW_SHARE = 0.6;
+const RESULTS_TOP_GAP = 16;
 
 const YEARS = {
   first: { label: '1st Year', hint: "Batch '26", bar: 'bg-brand-500', badge: 'border-brand-500/40 bg-brand-500/10 text-brand-300' },
@@ -50,27 +58,36 @@ function StatCard({ label, value, detail, icon, accent = 'text-white' }) {
   );
 }
 
-function FilterCard({ label, hint, bar, count, note, total, active, onClick }) {
+function FilterCard({ label, hint, bar, count, units, note, total, active, onClick }) {
   const share = total ? count / total : 0;
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`rounded-xl border bg-graphite-950/60 p-4 text-left transition duration-150 hover:border-graphite-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 active:scale-[0.98] ${active ? 'border-brand-500' : 'border-white/[0.08]'}`}
+      whileTap={{ scale: 0.98 }}
+      transition={SPRING_QUICK}
+      className={`rounded-xl border p-4 text-left transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 ${active ? 'border-brand-500 bg-brand-500/10' : 'border-white/[0.08] bg-graphite-950/60 [@media(hover:hover)]:hover:border-graphite-400'}`}
     >
       <span className="flex items-baseline justify-between gap-2">
         <span className="font-display text-lg font-bold text-white">{label}</span>
-        <span className="text-xs text-graphite-300">{hint}</span>
+        {active ? (
+          <span className="flex items-center gap-1 self-center text-xs font-medium text-white">
+            <Check className="h-3.5 w-3.5" aria-hidden="true" />
+            Selected
+          </span>
+        ) : (
+          <span className="text-xs text-graphite-300">{hint}</span>
+        )}
       </span>
       <span className="mt-2 block font-display text-3xl font-bold leading-none text-white">
-        {count} <span className="text-base font-normal text-graphite-300">({Math.round(share * 100)}%)</span>
+        {count} <span className="text-base font-normal text-graphite-300">{unitFor(count, units)} ({Math.round(share * 100)}%)</span>
       </span>
-      <span className="mt-1 block h-5 text-xs text-graphite-300">{note}</span>
-      <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-graphite-700">
+      {note !== undefined && <span className="mt-1 block h-5 text-xs text-graphite-300">{note}</span>}
+      <span className={`block h-1.5 overflow-hidden rounded-full bg-graphite-700 ${note === undefined ? 'mt-3' : 'mt-1'}`}>
         <motion.span className={`block h-full origin-left rounded-full ${bar}`} initial={{ scaleX: 0 }} animate={{ scaleX: share }} transition={SPRING} />
       </span>
-    </button>
+    </motion.button>
   );
 }
 
@@ -135,6 +152,8 @@ export default function AdminDashboard({ teams, loadError, refreshing, onRefresh
   const [scanning, setScanning] = useState(false);
   const [markingTeam, setMarkingTeam] = useState(null);
   const searchRef = useRef(null);
+  const resultsRef = useRef(null);
+  const reduceMotion = useReducedMotion();
 
   const closeScanner = useCallback(() => setScanning(false), []);
 
@@ -173,7 +192,37 @@ export default function AdminDashboard({ teams, loadError, refreshing, onRefresh
     });
   }, [teams, filter, arrival, query]);
 
-  const toggleYear = (year) => setFilter((current) => (current === year ? 'all' : year));
+  // The teams can be far below the filter cards, so bring them into view to show what picking one did.
+  const showResults = () => {
+    const distanceFromTop = () => resultsRef.current.getBoundingClientRect().top;
+    if (distanceFromTop() > window.innerHeight * RESULTS_IN_VIEW_SHARE) {
+      scrollPage(() => window.scrollY + distanceFromTop() - RESULTS_TOP_GAP, reduceMotion);
+    }
+  };
+
+  const toggleYear = (year) => {
+    if (filter === year) {
+      setFilter('all');
+    } else {
+      setFilter(year);
+      showResults();
+    }
+  };
+
+  const toggleArrival = (key) => {
+    if (arrival === key) {
+      setArrival(null);
+    } else {
+      setArrival(key);
+      showResults();
+    }
+  };
+
+  const clearFilters = () => {
+    setFilter('all');
+    setArrival(null);
+    setQuery('');
+  };
 
   return (
     <motion.main variants={cardVariants} initial="hidden" animate="visible" exit="exit" className="relative z-10 mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
@@ -238,9 +287,10 @@ export default function AdminDashboard({ teams, loadError, refreshing, onRefresh
               key={key}
               {...details}
               count={stats.arrivals[key]}
+              units={TEAMS}
               total={teams.length}
               active={arrival === key}
-              onClick={() => setArrival((current) => (current === key ? null : key))}
+              onClick={() => toggleArrival(key)}
             />
           ))}
         </div>
@@ -259,6 +309,7 @@ export default function AdminDashboard({ teams, loadError, refreshing, onRefresh
               hint={YEARS[year].hint}
               bar={YEARS[year].bar}
               count={stats.years[year]}
+              units={PEOPLE}
               note={year === 'second' && stats.lateral > 0 ? `Including ${stats.lateral} lateral` : null}
               total={stats.people}
               active={filter === year}
@@ -268,7 +319,7 @@ export default function AdminDashboard({ teams, loadError, refreshing, onRefresh
         </div>
       </motion.section>
 
-      <motion.section variants={riseVariants} aria-label="Teams" className="mt-8">
+      <motion.section ref={resultsRef} variants={riseVariants} aria-label="Teams" className="mt-8">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <label className="group relative block lg:w-96">
             <span className="sr-only">Search teams</span>
@@ -291,20 +342,40 @@ export default function AdminDashboard({ teams, loadError, refreshing, onRefresh
                 aria-pressed={filter === year}
                 className={`h-9 rounded-full border px-3.5 text-sm font-medium transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 active:scale-[0.97] ${filter === year ? 'border-brand-600 bg-brand-600 text-white' : 'border-white/[0.12] text-graphite-200 hover:border-graphite-400'}`}
               >
-                {year === 'all' ? 'All' : YEARS[year].label} ({teamCounts[year]})
+                {year === 'all' ? 'All' : YEARS[year].label} ({teamCounts[year]} {unitFor(teamCounts[year], TEAMS)})
               </button>
             ))}
           </div>
         </div>
 
-        <p className="mt-4 text-sm text-graphite-300" aria-live="polite">Showing {visibleTeams.length} of {teams.length} teams</p>
+        <div className="mt-4 flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2">
+          <p className="text-sm text-graphite-300" aria-live="polite">Showing {visibleTeams.length} of {teams.length} teams</p>
+          {arrival && (
+            <button
+              type="button"
+              onClick={() => setArrival(null)}
+              aria-label={`Stop filtering by ${ARRIVALS[arrival].label}`}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-brand-600 bg-brand-600 pl-3.5 pr-2.5 text-sm font-medium text-white transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white active:scale-[0.97]"
+            >
+              {ARRIVALS[arrival].label}
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
+        </div>
 
         {visibleTeams.length > 0 ? (
           <div className="mt-3 grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
             {visibleTeams.map((team) => <TeamCard key={team.teamCode} team={team} onMark={setMarkingTeam} />)}
           </div>
         ) : (
-          <p className={`${CARD_CLASSES} mt-3 p-8 text-center text-graphite-300`}>{teams.length ? 'No teams match that.' : 'No teams yet.'}</p>
+          <div className={`${CARD_CLASSES} mt-3 p-8 text-center text-graphite-300`}>
+            <p>{teams.length ? 'No teams match that.' : 'No teams yet.'}</p>
+            {teams.length > 0 && (
+              <button type="button" onClick={clearFilters} className={buttonClasses('mt-4 border-graphite-500 text-white [@media(hover:hover)]:hover:border-graphite-300')}>
+                Clear search and filters
+              </button>
+            )}
+          </div>
         )}
       </motion.section>
 
