@@ -360,8 +360,10 @@ const registerTeam = async (...members) => {
   return body.teamCode;
 };
 
+const saveAttendance = (cookie, teamCode, body) => call(handleAdminAttendance, { cookie, params: { teamCode }, body });
+
 const markPresent = (cookie, teamCode, rollNumber, present = true) =>
-  call(handleAdminAttendance, { cookie, params: { teamCode }, body: { rollNumber, present } });
+  saveAttendance(cookie, teamCode, present ? { present: [rollNumber] } : { absent: [rollNumber] });
 
 const checkedIn = (team) => team.members.filter((person) => person.checkedInAt).map((person) => person.rollNumber);
 
@@ -400,6 +402,25 @@ test('marks each member separately, and can undo a mark', async () => {
   const undone = await markPresent(cookie, teamCode, '26Z001', false);
   assert.deepEqual(checkedIn(undone.body.team), ['26N000']);
   assert.deepEqual(checkedIn(await Team.findOne({ teamCode }).lean()), ['26N000']);
+});
+
+test('one save can mark some members and unmark others together', async () => {
+  const cookie = await logIn();
+  const teamCode = await registerTeam(member('A', '26N000'), member('B', '26Z001'), member('C', '26N002'));
+  await markPresent(cookie, teamCode, '26N000');
+
+  const { status, body } = await saveAttendance(cookie, teamCode, { present: ['26Z001', '26N002'], absent: ['26N000'] });
+  assert.equal(status, 200);
+  assert.deepEqual(checkedIn(body.team), ['26Z001', '26N002']);
+});
+
+test('a save with a member from outside the team changes nothing', async () => {
+  const cookie = await logIn();
+  const teamCode = await registerTeam(member('A', '26N000'), member('B', '26Z001'));
+
+  const { status } = await saveAttendance(cookie, teamCode, { present: ['26N000', '26N999'] });
+  assert.equal(status, 404);
+  assert.deepEqual(checkedIn(await Team.findOne({ teamCode }).lean()), []);
 });
 
 test('marking someone twice keeps the time they first arrived', async () => {
@@ -442,7 +463,9 @@ test('refuses marks that do not make sense', async () => {
   assert.equal((await markPresent(cookie, teamCode, '26N999')).status, 404);
   assert.equal((await markPresent(cookie, 'GT-NOPE00', '26N000')).status, 404);
   assert.equal((await markPresent(cookie, teamCode, { $ne: '' })).status, 400);
-  assert.equal((await markPresent(cookie, teamCode, '26N000', 'yes')).status, 400);
+  assert.equal((await saveAttendance(cookie, teamCode, { present: '26N000' })).status, 400);
+  assert.equal((await saveAttendance(cookie, teamCode, { present: [], absent: [] })).status, 400);
+  assert.equal((await saveAttendance(cookie, teamCode, { present: ['26N000'], absent: ['26N000'] })).status, 400);
   assert.equal((await call(handleAdminAttendance, { cookie, params: { teamCode } })).status, 400);
   assert.equal((await call(handleAdminAttendance, { method: 'GET', cookie, params: { teamCode } })).status, 405);
   assert.deepEqual(checkedIn(await Team.findOne({ teamCode }).lean()), []);

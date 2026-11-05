@@ -27,6 +27,6 @@ export function getAdminTeam(teamCode) {
   return apiRequest(`/admin/teams/${encodeURIComponent(teamCode)}`);
 }
 
-export function setMemberAttendance(teamCode, rollNumber, present) {
-  return apiRequest(`/admin/teams/${encodeURIComponent(teamCode)}/attendance`, { method: 'POST', body: { rollNumber, present } });
+export function saveAttendance(teamCode, { present, absent }) {
+  return apiRequest(`/admin/teams/${encodeURIComponent(teamCode)}/attendance`, { method: 'POST', body: { present, absent } });
 }

@@ -88,21 +88,33 @@ export const handleAdminTeam = adminRoute('GET', async (req, res) => {
   return res.status(200).json({ team });
 });
 
-export const handleAdminAttendance = adminRoute('POST', async (req, res) => {
-  const { rollNumber, present } = req.body ?? {};
-  if (typeof rollNumber !== 'string' || typeof present !== 'boolean') return res.status(400).json({ error: 'Pick a member to mark.' });
+const isRollNumberList = (value) => Array.isArray(value) && value.every((rollNumber) => typeof rollNumber === 'string');
 
-  const teamCode = readTeamCode(req);
-  // Updates only this member, so two people marking the same team can't undo each other.
-  const updated = await Team.findOneAndUpdate(
-    { teamCode, members: { $elemMatch: { rollNumber, checkedInAt: present ? null : { $ne: null } } } },
-    { $set: { 'members.$.checkedInAt': present ? new Date() : null } },
-    { returnDocument: 'after' },
+export const handleAdminAttendance = adminRoute('POST', async (req, res) => {
+  const { present = [], absent = [] } = req.body ?? {};
+  const isValid = isRollNumberList(present) && isRollNumberList(absent) && present.length + absent.length > 0 && !present.some((rollNumber) => absent.includes(rollNumber));
+  if (!isValid) return res.status(400).json({ error: 'Pick who to mark.' });
+
+  const update = {};
+  const arrayFilters = [];
+  if (present.length) {
+    update['members.$[arrived].checkedInAt'] = new Date();
+    // Skips anyone already marked, which keeps the time they first arrived.
+    arrayFilters.push({ 'arrived.rollNumber': { $in: present }, 'arrived.checkedInAt': null });
+  }
+  if (absent.length) {
+    update['members.$[away].checkedInAt'] = null;
+    arrayFilters.push({ 'away.rollNumber': { $in: absent } });
+  }
+
+  // One write, so a save can't half-finish. It only touches the members sent, so two people marking the same team can't undo each other.
+  const team = await Team.findOneAndUpdate(
+    { teamCode: readTeamCode(req), 'members.rollNumber': { $all: [...present, ...absent] } },
+    { $set: update },
+    { arrayFilters, returnDocument: 'after' },
   ).lean();
 
-  // Nothing changed if they were already marked this way, which keeps the time they first arrived.
-  const team = updated ?? (await Team.findOne({ teamCode, 'members.rollNumber': rollNumber }).lean());
-  if (!team) return res.status(404).json({ error: 'That member isn\'t on this team.' });
+  if (!team) return res.status(404).json({ error: 'Couldn\'t find that team or member.' });
   return res.status(200).json({ team });
 });
 

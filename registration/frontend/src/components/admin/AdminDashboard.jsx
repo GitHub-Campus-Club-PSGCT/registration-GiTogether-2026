@@ -1,8 +1,9 @@
 import { Suspense, lazy, useCallback, useMemo, useRef, useState } from 'react';
-import { Download, Layers, LogOut, MailWarning, RefreshCw, ScanLine, Search, UserCheck, Users } from 'lucide-react';
-import { motion } from 'motion/react';
-import AttendanceButton from '@/components/admin/AttendanceButton';
+import { Check, Download, Layers, LogOut, MailWarning, RefreshCw, ScanLine, Search, SquareCheck, UserCheck, Users } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import AttendanceSheet from '@/components/admin/AttendanceSheet';
 import FormBanner from '@/components/ui/FormBanner';
+import { countPresent, formatTime, teamMatches } from '@/lib/attendance';
 import { ATTENDANCE_CSV_URL } from '@/lib/authService';
 import { SPRING, cardVariants, riseVariants } from '@/lib/motion';
 import { getStudentYear } from '@/lib/validation';
@@ -23,8 +24,6 @@ const ARRIVALS = {
   none: { label: 'Not arrived', hint: 'Nobody yet', bar: 'bg-graphite-400' },
 };
 
-const countPresent = (team) => team.members.filter((member) => member.checkedInAt).length;
-
 const arrivalOf = (team) => {
   const present = countPresent(team);
   if (present === 0) return 'none';
@@ -37,8 +36,6 @@ const buttonClasses = (extra = '') =>
   `inline-flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-medium transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 active:scale-[0.97] ${extra}`;
 
 const formatDate = (date) => new Date(date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-
-const memberMatches = (member, query) => [member.name, member.rollNumber, member.phone, member.email].some((value) => value.toLowerCase().includes(query));
 
 function StatCard({ label, value, detail, icon, accent = 'text-white' }) {
   return (
@@ -77,7 +74,7 @@ function FilterCard({ label, hint, bar, count, note, total, active, onClick }) {
   );
 }
 
-function MemberRow({ member, teamCode, onTeamChange, onSessionExpired }) {
+function MemberRow({ member }) {
   const { year, lateral } = getStudentYear(member.rollNumber);
   return (
     <li className="rounded-xl border border-white/[0.06] bg-graphite-950/60 p-3">
@@ -95,14 +92,16 @@ function MemberRow({ member, teamCode, onTeamChange, onSessionExpired }) {
         <span>{member.rollNumber}</span>
         <a href={`tel:${member.phone}`} className="rounded hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600">{member.phone}</a>
       </p>
-      <div className="mt-3">
-        <AttendanceButton teamCode={teamCode} member={member} onTeamChange={onTeamChange} onSessionExpired={onSessionExpired} />
-      </div>
+      <p className={`mt-1.5 flex items-center gap-1.5 text-sm ${member.checkedInAt ? 'text-success-300' : 'text-graphite-400'}`}>
+        {member.checkedInAt && <Check className="h-4 w-4" aria-hidden="true" />}
+        {member.checkedInAt ? `Here since ${formatTime(member.checkedInAt)}` : 'Not here yet'}
+      </p>
     </li>
   );
 }
 
-function TeamCard({ team, onTeamChange, onSessionExpired }) {
+function TeamCard({ team, onMark }) {
+  const allHere = countPresent(team) === team.members.length;
   return (
     <article className={`${CARD_CLASSES} p-5`}>
       <header className="flex items-start justify-between gap-3 border-b border-white/[0.08] pb-3">
@@ -110,11 +109,15 @@ function TeamCard({ team, onTeamChange, onSessionExpired }) {
           <h3 className="break-words font-display text-xl font-bold leading-tight text-white">{team.teamName}</h3>
           <p className="mt-1 text-xs text-graphite-300">{team.teamCode} · {formatDate(team.createdAt)}</p>
         </div>
-        <span className="shrink-0 rounded-full border border-white/[0.12] px-2.5 py-0.5 text-xs text-graphite-200">{countPresent(team)} of {team.members.length} here</span>
+        <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs ${allHere ? 'border-success-500/40 text-success-300' : 'border-white/[0.12] text-graphite-200'}`}>{countPresent(team)} of {team.members.length} here</span>
       </header>
       <ul className="mt-3 space-y-2">
-        {team.members.map((member) => <MemberRow key={member.rollNumber} member={member} teamCode={team.teamCode} onTeamChange={onTeamChange} onSessionExpired={onSessionExpired} />)}
+        {team.members.map((member) => <MemberRow key={member.rollNumber} member={member} />)}
       </ul>
+      <button type="button" onClick={() => onMark(team)} className={buttonClasses('mt-3 w-full border-graphite-500 text-white hover:border-graphite-300')}>
+        <SquareCheck className="h-4 w-4" aria-hidden="true" />
+        Mark attendance
+      </button>
       {team.emailStatus === 'failed' && (
         <p className="mt-3 flex items-center gap-1.5 text-xs text-warning-300">
           <MailWarning className="h-3.5 w-3.5" aria-hidden="true" />
@@ -130,6 +133,7 @@ export default function AdminDashboard({ teams, loadError, refreshing, onRefresh
   const [arrival, setArrival] = useState(null);
   const [query, setQuery] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [markingTeam, setMarkingTeam] = useState(null);
   const searchRef = useRef(null);
 
   const closeScanner = useCallback(() => setScanning(false), []);
@@ -163,7 +167,7 @@ export default function AdminDashboard({ teams, loadError, refreshing, onRefresh
     const search = query.trim().toLowerCase();
     return teams.filter((team) => {
       const inYear = filter === 'all' || team.members.some((member) => getStudentYear(member.rollNumber).year === filter);
-      const inSearch = !search || team.teamName.toLowerCase().includes(search) || team.teamCode.toLowerCase().includes(search) || team.members.some((member) => memberMatches(member, search));
+      const inSearch = !search || teamMatches(team, search);
       const inArrival = !arrival || arrivalOf(team) === arrival;
       return inYear && inSearch && inArrival;
     });
@@ -297,18 +301,33 @@ export default function AdminDashboard({ teams, loadError, refreshing, onRefresh
 
         {visibleTeams.length > 0 ? (
           <div className="mt-3 grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {visibleTeams.map((team) => <TeamCard key={team.teamCode} team={team} onTeamChange={onTeamChange} onSessionExpired={onRefresh} />)}
+            {visibleTeams.map((team) => <TeamCard key={team.teamCode} team={team} onMark={setMarkingTeam} />)}
           </div>
         ) : (
           <p className={`${CARD_CLASSES} mt-3 p-8 text-center text-graphite-300`}>{teams.length ? 'No teams match that.' : 'No teams yet.'}</p>
         )}
       </motion.section>
 
-      {scanning && (
-        <Suspense fallback={null}>
-          <CheckInScanner onClose={closeScanner} onTeamChange={onTeamChange} onSessionExpired={onRefresh} />
-        </Suspense>
-      )}
+      <AnimatePresence>
+        {scanning && (
+          <Suspense key="scanner" fallback={null}>
+            <CheckInScanner teams={teams} onClose={closeScanner} onTeamChange={onTeamChange} onSessionExpired={onRefresh} />
+          </Suspense>
+        )}
+        {markingTeam && (
+          <AttendanceSheet
+            key={markingTeam.teamCode}
+            team={markingTeam}
+            refreshOnOpen
+            onClose={() => setMarkingTeam(null)}
+            onSaved={(team) => {
+              onTeamChange(team);
+              setMarkingTeam(null);
+            }}
+            onSessionExpired={onRefresh}
+          />
+        )}
+      </AnimatePresence>
     </motion.main>
   );
 }

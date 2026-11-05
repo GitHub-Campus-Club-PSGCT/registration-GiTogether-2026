@@ -4,6 +4,10 @@ import { animate } from 'motion/react';
 export const SPRING = { type: 'spring', bounce: 0, duration: 0.55 };
 export const SPRING_QUICK = { type: 'spring', bounce: 0, duration: 0.35 };
 export const SPRING_LIVELY = { type: 'spring', bounce: 0.22, duration: 0.6 };
+export const SPRING_SHEET = { type: 'spring', bounce: 0, duration: 0.4 };
+
+// Where a flick would come to rest, so a quick flick can dismiss a sheet even after a short drag.
+export const projectMomentum = (velocity, decelerationRate = 0.99) => ((velocity / 1000) * decelerationRate) / (1 - decelerationRate);
 
 export const cardVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.985 },

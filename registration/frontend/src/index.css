@@ -36,3 +36,28 @@
     }
   }
 }
+
+@layer components {
+  /* Frosted layers that float over the camera or the dashboard. */
+  .sheet-material {
+    background: rgba(16, 17, 20, 0.82);
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 -24px 60px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(28px) saturate(170%);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .chrome-material {
+    background: rgba(10, 11, 13, 0.62);
+    backdrop-filter: blur(20px) saturate(170%);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+    .sheet-material,
+    .chrome-material {
+      background: #101114;
+      backdrop-filter: none;
+    }
+  }
+}

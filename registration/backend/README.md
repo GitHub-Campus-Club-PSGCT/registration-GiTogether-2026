@@ -94,7 +94,7 @@ The whole app lives under `/gitogether2026`, set in `../shared/basePath.js`, so 
 | `POST` | `/api/admin/login` | No | Logs in to the dashboard, given `{ "password": "..." }` | `200` `{ "ok": true }` |
 | `GET` | `/api/admin/teams` | Yes | Lists every team, newest first | `200` `{ "teams": [...] }` |
 | `GET` | `/api/admin/teams/:teamCode` | Yes | Finds one team, for the scanner | `200` `{ "team": {...} }` |
-| `POST` | `/api/admin/teams/:teamCode/attendance` | Yes | Marks one member, given `{ "rollNumber": "26N000", "present": true }` | `200` `{ "team": {...} }` |
+| `POST` | `/api/admin/teams/:teamCode/attendance` | Yes | Saves the marks that changed, given `{ "present": ["26N000"], "absent": ["26Z001"] }` | `200` `{ "team": {...} }` |
 | `GET` | `/api/admin/attendance.csv` | Yes | Downloads attendance for everyone | `200` with a CSV file |
 | `POST` | `/api/admin/logout` | No | Ends the session | `200` `{ "ok": true }` |
 
@@ -155,10 +155,12 @@ Years come from roll numbers, in `getStudentYear` in `../shared/teamRules.js`. A
 Attendance is taken once, at entry, and each member is marked separately because a team shares one pass.
 
 1. On the dashboard, tap **Scan pass** and point the camera at the QR on the team's pass.
-2. Mark each member who's there. Each mark saves straight away, and tapping it again undoes it.
-3. Tap **Scan next team**. The scanner ignores the last pass until it has left the camera's view, so it doesn't reopen the same team.
+2. Tick each member who's there and tap **Save**. Nothing changes until then. Closing with unsaved ticks asks first.
+3. The camera is ready for the next team straight away. It ignores the last pass until that pass has left its view, and **Edit** on the "saved" message reopens the team for a quick fix.
 
-For a late arrival, or a pass that won't scan, tap **Find team**, search for the team, and mark them on its card. Marking someone who's already marked keeps the time they first arrived.
+For a late arrival, or a pass that won't scan, tap **Can't scan? Find team** in the scanner, or **Mark attendance** on the team's card on the dashboard. Both open the same screen. Saving someone who's already marked keeps the time they first arrived.
+
+Each save is one database write that only touches the members who changed, so a save can't half-finish and two people marking the same team can't undo each other.
 
 The QR only holds the team code. It does nothing without a dashboard login, so anyone else who scans it just sees the code.
 
